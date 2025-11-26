@@ -19,6 +19,7 @@ retrofit = "2.11.0"
 retrofitConverterGson = "2.11.0"
 junitJunit = "4.12"
 junitJupiter = "5.8.1"
+jetbrainsKotlinJvm = "2.0.21"
 
 [libraries]
 accompanist-flowlayout = { module = "com.google.accompanist:accompanist-flowlayout", version.ref = "accompanistFlowlayout" }
@@ -46,4 +47,5 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.r
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
 

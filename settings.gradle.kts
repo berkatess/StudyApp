@@ -23,3 +23,4 @@ rootProject.name = "StudyApp"
 include(":app")
 include(":core")
 include(":domain")
+include(":data")

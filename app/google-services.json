@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "630225940826",
+    "project_id": "notes-e491d",
+    "storage_bucket": "notes-e491d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630225940826:android:6bd6ce18265c83f34bc363",
+        "android_client_info": {
+          "package_name": "com.ar.studyapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8IKk-a5aDl6H7yUfwKPvHLv0TNgzsCA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

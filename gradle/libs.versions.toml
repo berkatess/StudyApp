@@ -25,6 +25,10 @@ jetbrainsKotlinJvm = "2.0.21"
 room = "2.6.1"
 firebase-bom = "33.5.0"
 hilt = "2.52"
+google-services = "4.4.2"
+
+
+
 
 [libraries]
 accompanist-flowlayout = { module = "com.google.accompanist:accompanist-flowlayout", version.ref = "accompanistFlowlayout" }
@@ -65,5 +69,6 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
 
 

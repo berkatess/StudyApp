@@ -1,6 +1,9 @@
 package com.ar.data.note.remote
 
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,12 +15,22 @@ class NoteRemoteDataSource @Inject constructor(
 
     private val notesCollection get() = firestore.collection("notes")
 
-    suspend fun getNotes(): List<Pair<String, NoteRemoteDto>> {
-        val snapshot = notesCollection.get().await()
-        return snapshot.documents.mapNotNull { doc ->
-            val dto = doc.toObject(NoteRemoteDto::class.java)
-            dto?.let { doc.id to it }
+    fun getNotes(): Flow<List<Pair<String, NoteRemoteDto>>> = callbackFlow {
+        val registration = notesCollection.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+
+            val list = snapshot?.documents?.mapNotNull { doc ->
+                val dto = doc.toObject(NoteRemoteDto::class.java)
+                dto?.let { doc.id to it }
+            } ?: emptyList()
+
+            trySend(list)
         }
+
+        awaitClose { registration.remove() }
     }
 
     suspend fun getNotesByCategory(categoryId: String): List<Pair<String, NoteRemoteDto>> {

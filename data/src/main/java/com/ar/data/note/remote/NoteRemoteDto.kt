@@ -1,9 +1,11 @@
 package com.ar.data.note.remote
 
+import com.google.firebase.Timestamp
+
 data class NoteRemoteDto(
     val title: String = "",
     val content: String = "",
     val categoryId: String? = null,
-    val createdAtMillis: Long = 0L,
-    val updatedAtMillis: Long = 0L
+    val createdAtMillis: Timestamp? = null,
+    val updatedAtMillis: Timestamp? = null
 )

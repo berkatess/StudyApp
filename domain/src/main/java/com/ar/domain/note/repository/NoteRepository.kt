@@ -12,7 +12,6 @@ interface NoteRepository {
 
     fun getNoteById(id: String): Flow<Result<Note>>
 
-
     suspend fun createNote(note: Note): Result<Note>
 
     suspend fun updateNote(note: Note): Result<Note>

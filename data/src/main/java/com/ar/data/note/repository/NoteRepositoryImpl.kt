@@ -10,8 +10,11 @@ import com.ar.data.note.remote.NoteRemoteDataSource
 import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,31 +24,6 @@ class NoteRepositoryImpl @Inject constructor(
     private val local: NoteLocalDataSource,
     private val dispatchers: DispatcherProvider
 ) : NoteRepository {
-
-    override fun getNotes(): Flow<Result<List<Note>>> = flow {
-        emit(Result.Loading)
-
-        try {
-            // Remote
-            val remoteData = remote.getNotes()
-            val domainNotes = remoteData.map { (id, dto) -> dto.toDomain(id) }
-
-            // Local’e kaydet
-            local.saveNotes(domainNotes.map { it.toEntity() })
-
-            emit(Result.Success(domainNotes))
-        } catch (e: Exception) {
-            // Remote fail → Local’den dene
-            val localEntities = local.getNotes()
-            val localDomain = localEntities.map { it.toDomain() }
-
-            if (localDomain.isNotEmpty()) {
-                emit(Result.Success(localDomain))
-            } else {
-                emit(Result.Error("Failed to load notes", e))
-            }
-        }
-    }.flowOn(dispatchers.io)
 
     override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> = flow {
         emit(Result.Loading)
@@ -94,6 +72,30 @@ class NoteRepositoryImpl @Inject constructor(
             }
         }
     }.flowOn(dispatchers.io)
+
+    override fun getNotes(): Flow<Result<List<Note>>> =
+        remote.getNotes()
+            .map { remoteList ->
+                val domainNotes = remoteList.map { (id, dto) -> dto.toDomain(id) }
+
+                // update local
+                local.saveNotes(domainNotes.map { it.toEntity() })
+
+                Result.Success(domainNotes) as Result<List<Note>>
+            }
+            .onStart { emit(Result.Loading) }  // ilk state
+            .catch { e ->
+                // if remote failed try local
+                val localEntities = local.getNotes()
+                val localDomain = localEntities.map { it.toDomain() }
+
+                if (localDomain.isNotEmpty()) {
+                    emit(Result.Success(localDomain))
+                } else {
+                    emit(Result.Error("Failed to observe notes", e))
+                }
+            }
+            .flowOn(dispatchers.io)
 
     override suspend fun createNote(note: Note): Result<Note> {
         return try {

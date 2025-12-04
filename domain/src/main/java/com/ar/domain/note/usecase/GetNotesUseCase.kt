@@ -1,15 +1,15 @@
 package com.ar.domain.note.usecase
 
-import com.ar.core.usecase.BaseUseCase
+import com.ar.core.result.Result
 import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
-import com.ar.core.result.Result
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class GetNotesUseCase(
+class GetNotesUseCase @Inject constructor(
     private val repository: NoteRepository
-) : BaseUseCase<Unit, List<Note>>() {
-
-    override suspend fun execute(params: Unit): Result<List<Note>> {
+) {
+    operator fun invoke(): Flow<Result<List<Note>>> {
         return repository.getNotes()
     }
 }

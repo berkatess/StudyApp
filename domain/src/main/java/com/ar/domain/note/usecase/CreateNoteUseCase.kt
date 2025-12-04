@@ -1,11 +1,12 @@
 package com.ar.domain.note.usecase
 
-import com.ar.core.usecase.BaseUseCase
 import com.ar.core.result.Result
+import com.ar.core.usecase.BaseUseCase
 import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
+import javax.inject.Inject
 
-class CreateNoteUseCase(
+class CreateNoteUseCase @Inject constructor(
     private val repository: NoteRepository
 ) : BaseUseCase<Note, Note>() {
 
@@ -16,6 +17,7 @@ class CreateNoteUseCase(
         if (params.content.isBlank()) {
             return Result.Error("Content cannot be empty")
         }
+
         return repository.createNote(params)
     }
 }

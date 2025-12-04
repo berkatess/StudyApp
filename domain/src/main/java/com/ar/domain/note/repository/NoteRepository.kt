@@ -1,15 +1,17 @@
 package com.ar.domain.note.repository
 
-import com.ar.domain.note.model.Note
 import com.ar.core.result.Result
+import com.ar.domain.note.model.Note
+import kotlinx.coroutines.flow.Flow
 
 interface NoteRepository {
 
-    suspend fun getNotes(): Result<List<Note>>
+    fun getNotes(): Flow<Result<List<Note>>>
 
-    suspend fun getNotesByCategory(categoryId: String): Result<List<Note>>
+    fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>>
 
-    suspend fun getNoteById(id: String): Result<Note>
+    fun getNoteById(id: String): Flow<Result<Note>>
+
 
     suspend fun createNote(note: Note): Result<Note>
 

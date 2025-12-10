@@ -1,4 +1,4 @@
-package com.ar.studyapp.note
+package com.ar.studyapp.note.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -36,7 +36,6 @@ class NoteListViewModel @Inject constructor(
         }
     }
 }
-
 
 sealed class NotesUiState {
     object Loading : NotesUiState()

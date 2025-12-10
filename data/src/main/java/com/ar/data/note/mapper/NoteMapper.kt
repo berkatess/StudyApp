@@ -5,6 +5,7 @@ import com.ar.data.note.remote.NoteRemoteDto
 import com.ar.domain.note.model.Note
 import com.google.firebase.Timestamp
 import java.time.Instant
+import java.util.Date
 
 // ---------------------
 // Domain → Local (Room)
@@ -41,20 +42,24 @@ fun Note.toRemoteDto(): NoteRemoteDto =
         title = title,
         content = content,
         categoryId = categoryId,
-        createdAtMillis = Timestamp(createdAt.epochSecond, createdAt.nano),
-        updatedAtMillis = Timestamp(updatedAt.epochSecond, updatedAt.nano)
+        createdAtMillis = Timestamp(Date.from(createdAt)),
+        updatedAtMillis = Timestamp(Date.from(updatedAt))
     )
 
 // ---------------------
 // Remote → Domain (Firestore → Domain)
 // Timestamp → Instant
 // ---------------------
-fun NoteRemoteDto.toDomain(id: String): Note =
-    Note(
+fun NoteRemoteDto.toDomain(id: String): Note {
+    val created = createdAtMillis?.toDate()?.toInstant() ?: Instant.EPOCH
+    val updated = updatedAtMillis?.toDate()?.toInstant() ?: created
+
+    return Note(
         id = id,
         title = title,
         content = content,
         categoryId = categoryId,
-        createdAt = createdAtMillis?.toDate()?.toInstant() ?: Instant.EPOCH,
-        updatedAt = updatedAtMillis?.toDate()?.toInstant() ?: Instant.EPOCH
+        createdAt = created,
+        updatedAt = updated
     )
+}

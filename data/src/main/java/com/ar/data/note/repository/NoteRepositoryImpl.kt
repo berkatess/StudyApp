@@ -47,31 +47,59 @@ class NoteRepositoryImpl @Inject constructor(
         }
     }.flowOn(dispatchers.io)
 
-    override fun getNoteById(id: String): Flow<Result<Note>> = flow {
-        emit(Result.Loading)
 
-        try {
-            val remoteResult = remote.getNoteById(id)
-            if (remoteResult == null) {
-                emit(Result.Error("Note not found"))
-                return@flow
+    override fun getNoteById(id: String): Flow<Result<Note>> =
+        remote.observeNoteById(id)
+            .map { remoteResult ->
+                if (remoteResult == null) {
+                    Result.Error("Note not found")
+                } else {
+                    val (docId, dto) = remoteResult
+                    val domainNote = dto.toDomain(docId)
+
+                    local.saveNote(domainNote.toEntity())
+
+                    Result.Success(domainNote)
+                }
             }
-
-            val (docId, dto) = remoteResult
-            val domainNote = dto.toDomain(docId)
-
-            local.saveNote(domainNote.toEntity())
-
-            emit(Result.Success(domainNote))
-        } catch (e: Exception) {
-            val localEntity = local.getNoteById(id)
-            if (localEntity == null) {
-                emit(Result.Error("Note not found locally", e))
-            } else {
-                emit(Result.Success(localEntity.toDomain()))
+            .onStart {
+                emit(Result.Loading)
             }
-        }
-    }.flowOn(dispatchers.io)
+            .catch { e ->
+                val localEntity = local.getNoteById(id)
+                if (localEntity != null) {
+                    emit(Result.Success(localEntity.toDomain()))
+                } else {
+                    emit(Result.Error("Failed to observe note", e))
+                }
+            }
+            .flowOn(dispatchers.io)
+
+//    override fun getNoteById(id: String): Flow<Result<Note>> = flow {
+//        emit(Result.Loading)
+//
+//        try {
+//            val remoteResult = remote.getNoteById(id)
+//            if (remoteResult == null) {
+//                emit(Result.Error("Note not found"))
+//                return@flow
+//            }
+//
+//            val (docId, dto) = remoteResult
+//            val domainNote = dto.toDomain(docId)
+//
+//            local.saveNote(domainNote.toEntity())
+//
+//            emit(Result.Success(domainNote))
+//        } catch (e: Exception) {
+//            val localEntity = local.getNoteById(id)
+//            if (localEntity == null) {
+//                emit(Result.Error("Note not found locally", e))
+//            } else {
+//                emit(Result.Success(localEntity.toDomain()))
+//            }
+//        }
+//    }.flowOn(dispatchers.io)
 
     override fun getNotes(): Flow<Result<List<Note>>> =
         remote.getNotes()

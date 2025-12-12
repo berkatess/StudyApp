@@ -1,13 +1,38 @@
 package com.ar.data.category.remote
 
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class CategoryRemoteDataSource(
+@Singleton
+class CategoryRemoteDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
 
     private val categoriesCollection get() = firestore.collection("categories")
+
+
+    fun observeCategories(): Flow<List<Pair<String, CategoryRemoteDto>>> = callbackFlow {
+        val registration = categoriesCollection.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+
+            val list = snapshot?.documents?.mapNotNull { doc ->
+                val dto = doc.toObject(CategoryRemoteDto::class.java)
+                dto?.let { doc.id to it }
+            } ?: emptyList()
+
+            trySend(list)
+        }
+
+        awaitClose { registration.remove() }
+    }
 
     suspend fun getCategories(): List<Pair<String, CategoryRemoteDto>> {
         val snapshot = categoriesCollection.orderBy("order").get().await()

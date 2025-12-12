@@ -1,19 +1,23 @@
 package com.ar.data.category.local
 
-class CategoryLocalDataSource(
-    private val dao: CategoryDao
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class CategoryLocalDataSource @Inject constructor(
+    private val categoryDao: CategoryDao
 ) {
 
-    suspend fun getCategories(): List<CategoryEntity> = dao.getCategories()
+    suspend fun getCategories(): List<CategoryEntity> = categoryDao.getCategories()
 
-    suspend fun getCategoryById(id: String): CategoryEntity? = dao.getCategoryById(id)
+    suspend fun getCategoryById(id: String): CategoryEntity? = categoryDao.getCategoryById(id)
 
     suspend fun saveCategories(categories: List<CategoryEntity>) =
-        dao.insertCategories(categories)
+        categoryDao.insertCategories(categories)
 
     suspend fun saveCategory(category: CategoryEntity) =
-        dao.insertCategory(category)
+        categoryDao.insertCategory(category)
 
     suspend fun deleteCategory(id: String) =
-        dao.deleteCategory(id)
+        categoryDao.deleteCategory(id)
 }

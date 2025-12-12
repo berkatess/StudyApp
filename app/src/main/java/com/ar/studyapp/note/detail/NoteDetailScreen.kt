@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -16,9 +17,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun NoteDetailRoute(
+    noteId: String,                 
     onBackClick: () -> Unit,
     viewModel: NoteDetailViewModel = hiltViewModel()
 ) {
+
+    LaunchedEffect(noteId) {
+        viewModel.loadNote(noteId)
+    }
+
     val uiState by viewModel.uiState.collectAsState()
 
     NoteDetailScreen(
@@ -37,11 +44,11 @@ fun NoteDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(""
-//                        when (uiState) {
-//                            is NoteDetailUiState.Success -> uiState.note.title
-//                            else -> "Note Detail"
-//                        }
+                    Text(
+                        when (uiState) {
+                            is NoteDetailUiState.Success -> uiState.note.title
+                            else -> "Note Detail"
+                        }
                     )
                 },
                 navigationIcon = {

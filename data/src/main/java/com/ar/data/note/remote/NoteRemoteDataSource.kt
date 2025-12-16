@@ -75,10 +75,10 @@ class NoteRemoteDataSource @Inject constructor(
         return doc.id to dto
     }
 
-    suspend fun createNote(dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {
-        val docRef = notesCollection.document()
+    suspend fun createNote(id: String, dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {
+        val docRef = notesCollection.document(id)
         docRef.set(dto).await()
-        return docRef.id to dto
+        return id to dto
     }
 
     suspend fun updateNote(id: String, dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -27,6 +28,7 @@ import com.ar.domain.note.model.Note
 @Composable
 fun NoteListRoute(
     onNoteClick: (String) -> Unit,
+    onAddNoteClick: () -> Unit,
     onManageCategoriesClick: () -> Unit,
     viewModel: NoteListViewModel = hiltViewModel()
 ) {
@@ -36,6 +38,7 @@ fun NoteListRoute(
     NoteListScreen(
         uiState = uiState,
         onNoteClick = onNoteClick,
+        onAddNoteClick = onAddNoteClick,
         onManageCategoriesClick = onManageCategoriesClick
     )
 }
@@ -50,6 +53,7 @@ fun NoteListRoute(
 fun NoteListScreen(
     uiState: NotesUiState,
     onNoteClick: (String) -> Unit,
+    onAddNoteClick: () -> Unit,
     onManageCategoriesClick: () -> Unit
 ) {
     Scaffold(
@@ -65,6 +69,14 @@ fun NoteListScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onAddNoteClick) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add note"
+                )
+            }
         }
     ) { innerPadding ->
         Box(

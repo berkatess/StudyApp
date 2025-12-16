@@ -10,5 +10,7 @@ data class NoteEntity(
     val content: String,
     val categoryId: String?,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val updatedAtMillis: Long,
+    val syncState: SyncState = SyncState.PENDING
 )
+

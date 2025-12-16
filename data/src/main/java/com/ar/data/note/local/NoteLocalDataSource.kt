@@ -20,4 +20,12 @@ class NoteLocalDataSource @Inject constructor(
     suspend fun saveNote(note: NoteEntity) = dao.insertNote(note)
 
     suspend fun deleteNote(id: String) = dao.deleteNote(id)
+
+    suspend fun getPendingNotes(): List<NoteEntity> {
+        return dao.getNotesBySyncState(SyncState.PENDING)
+    }
+
+    suspend fun markAsSynced(id: String) {
+        dao.updateSyncState(id, SyncState.SYNCED)
+    }
 }

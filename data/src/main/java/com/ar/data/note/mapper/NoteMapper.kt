@@ -1,6 +1,7 @@
 package com.ar.data.note.mapper
 
 import com.ar.data.note.local.NoteEntity
+import com.ar.data.note.local.SyncState
 import com.ar.data.note.remote.NoteRemoteDto
 import com.ar.domain.note.model.Note
 import com.google.firebase.Timestamp
@@ -10,14 +11,17 @@ import java.util.Date
 // ---------------------
 // Domain → Local (Room)
 // ---------------------
-fun Note.toEntity(): NoteEntity =
+fun Note.toEntity(
+    syncState: SyncState = SyncState.PENDING
+): NoteEntity =
     NoteEntity(
         id = id,
         title = title,
         content = content,
         categoryId = categoryId,
         createdAtMillis = createdAt.toEpochMilli(),
-        updatedAtMillis = updatedAt.toEpochMilli()
+        updatedAtMillis = updatedAt.toEpochMilli(),
+        syncState = syncState
     )
 
 // ---------------------

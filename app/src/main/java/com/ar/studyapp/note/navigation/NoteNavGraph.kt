@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ar.studyapp.category.CategoryManagementRoute
 import com.ar.studyapp.note.detail.NoteDetailRoute
+import com.ar.studyapp.note.edit.NoteEditRoute
 import com.ar.studyapp.note.list.NoteListRoute
 
 /**
@@ -20,6 +21,8 @@ object NoteDestinations {
     const val NOTE_DETAIL = "note_detail"
     const val NOTE_ID_ARG = "noteId"
     const val CATEGORY_MANAGEMENT = "category_management"
+    const val NOTE_EDIT = "note_edit"
+    const val NOTE_EDIT_NOTE_ID_ARG = "noteId"
 }
 
 /**
@@ -46,11 +49,12 @@ fun NoteNavGraph(
         composable(route = NoteDestinations.NOTES_LIST) {
             NoteListRoute(
                 onNoteClick = { noteId ->
-                    // item'a tıklandığında detay ekranına noteId ile geç
                     navController.navigate("${NoteDestinations.NOTE_DETAIL}/$noteId")
                 },
+                onAddNoteClick = {
+                    navController.navigate(NoteDestinations.NOTE_EDIT)
+                },
                 onManageCategoriesClick = {
-                    // kategori yönetimi ekranına git
                     navController.navigate(NoteDestinations.CATEGORY_MANAGEMENT)
                 }
             )
@@ -59,7 +63,7 @@ fun NoteNavGraph(
         // 📌 CategoryManagementScreen
         composable(route = NoteDestinations.CATEGORY_MANAGEMENT) {
             CategoryManagementRoute(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.navigateUp() }
             )
         }
 
@@ -77,8 +81,38 @@ fun NoteNavGraph(
 
             NoteDetailRoute(
                 noteId = noteId,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.navigateUp() }
             )
         }
+
+        // 📌 NoteEditScreen
+        //New note (parametresiz)
+        composable(route = NoteDestinations.NOTE_EDIT) {
+            NoteEditRoute(
+                noteId = null,
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
+        //Edit note (parametreli)
+        composable(
+            route = "${NoteDestinations.NOTE_EDIT}?${NoteDestinations.NOTE_EDIT_NOTE_ID_ARG}={${NoteDestinations.NOTE_EDIT_NOTE_ID_ARG}}",
+            arguments = listOf(
+                navArgument(NoteDestinations.NOTE_EDIT_NOTE_ID_ARG) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = true
+                }
+            )
+        ) { backStackEntry ->
+            val rawId = backStackEntry.arguments?.getString(NoteDestinations.NOTE_EDIT_NOTE_ID_ARG)
+            val noteId = rawId?.takeIf { it.isNotBlank() }
+
+            NoteEditRoute(
+                noteId = noteId,
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
     }
 }

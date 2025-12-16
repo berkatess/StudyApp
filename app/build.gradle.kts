@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.compose.compiler)
     id("kotlin-kapt")
 }
 
@@ -20,9 +21,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
-    }
 
     buildFeatures {
         compose = true
@@ -70,6 +68,7 @@ dependencies {
     implementation(libs.accompanist.flowlayout)
     implementation(libs.androidx.compose.material3)
     implementation(platform(libs.androidx.compose.bom))
+    implementation (libs.accompanist.flowlayout)
 
     // Firebase
     implementation(platform(libs.firebase.bom))
@@ -85,5 +84,10 @@ dependencies {
 
     // Hilt + Jetpack Compose
     implementation(libs.androidx.hilt.navigation.compose)
+
+    //WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    kapt(libs.androidx.hilt.compiler)
 
 }

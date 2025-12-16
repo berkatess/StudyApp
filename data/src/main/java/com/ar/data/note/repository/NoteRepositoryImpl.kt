@@ -2,7 +2,9 @@ package com.ar.data.note.repository
 
 import com.ar.core.result.Result
 import com.ar.core.coroutines.DispatcherProvider
+import com.ar.core.sync.NoteSyncScheduler
 import com.ar.data.note.local.NoteLocalDataSource
+import com.ar.data.note.local.SyncState
 import com.ar.data.note.mapper.toDomain
 import com.ar.data.note.mapper.toEntity
 import com.ar.data.note.mapper.toRemoteDto
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,7 +25,8 @@ import javax.inject.Singleton
 class NoteRepositoryImpl @Inject constructor(
     private val remote: NoteRemoteDataSource,
     private val local: NoteLocalDataSource,
-    private val dispatchers: DispatcherProvider
+    private val dispatchers: DispatcherProvider,
+    private val noteSyncScheduler: NoteSyncScheduler
 ) : NoteRepository {
 
     override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> = flow {
@@ -126,32 +130,38 @@ class NoteRepositoryImpl @Inject constructor(
             .flowOn(dispatchers.io)
 
     override suspend fun createNote(note: Note): Result<Note> {
+        val id = note.id.ifBlank { UUID.randomUUID().toString() }
+        val toSave = note.copy(id = id)
+
         return try {
-            val dto = note.toRemoteDto()
-            val (id, savedDto) = remote.createNote(dto)
-            val savedNote = savedDto.toDomain(id)
+            local.saveNote(
+                toSave.toEntity(syncState = SyncState.PENDING)
+            )
 
-            local.saveNote(savedNote.toEntity())
+            noteSyncScheduler.schedule()
 
-            Result.Success(savedNote)
+            Result.Success(toSave)
         } catch (e: Exception) {
-            Result.Error("Failed to create note", e)
+            Result.Error("Failed to save note locally", e)
         }
     }
+
 
     override suspend fun updateNote(note: Note): Result<Note> {
+        //save local
+        local.saveNote(note.toEntity())
+
+        //try remote
         return try {
             val dto = note.toRemoteDto()
-            val (id, updatedDto) = remote.updateNote(note.id, dto)
-            val updatedNote = updatedDto.toDomain(id)
-
-            local.saveNote(updatedNote.toEntity())
-
-            Result.Success(updatedNote)
+            remote.updateNote(note.id, dto)
+            Result.Success(note)
         } catch (e: Exception) {
-            Result.Error("Failed to update note", e)
+            // Offline → local already saved
+            Result.Success(note)
         }
     }
+
 
     override suspend fun deleteNote(id: String): Result<Unit> {
         return try {

@@ -15,6 +15,12 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE categoryId = :categoryId")
     suspend fun getNotesByCategory(categoryId: String): List<NoteEntity>
 
+    @Query("SELECT * FROM notes WHERE syncState = :state")
+    suspend fun getNotesBySyncState(state: SyncState): List<NoteEntity>
+
+    @Query("UPDATE notes SET syncState = :state WHERE id = :id")
+    suspend fun updateSyncState(id: String, state: SyncState)
+
     @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
     suspend fun getNoteById(id: String): NoteEntity?
 

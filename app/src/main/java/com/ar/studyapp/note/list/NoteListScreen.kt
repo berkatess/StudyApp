@@ -11,6 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,7 +42,8 @@ fun NoteListRoute(
         uiState = uiState,
         onNoteClick = onNoteClick,
         onAddNoteClick = onAddNoteClick,
-        onManageCategoriesClick = onManageCategoriesClick
+        onManageCategoriesClick = onManageCategoriesClick,
+        onDeleteNote = viewModel::deleteNote
     )
 }
 
@@ -54,7 +58,8 @@ fun NoteListScreen(
     uiState: NotesUiState,
     onNoteClick: (String) -> Unit,
     onAddNoteClick: () -> Unit,
-    onManageCategoriesClick: () -> Unit
+    onManageCategoriesClick: () -> Unit,
+    onDeleteNote: (String) -> Unit // ✅ EKLENDİ
 ) {
     Scaffold(
         topBar = {
@@ -79,6 +84,7 @@ fun NoteListScreen(
             }
         }
     ) { innerPadding ->
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -106,6 +112,9 @@ fun NoteListScreen(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     } else {
+
+                        var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
@@ -115,11 +124,27 @@ fun NoteListScreen(
                                 items = uiState.notes,
                                 key = { it.id }
                             ) { item ->
-                                NoteListItem(
-                                    item = item,
-                                    onClick = { onNoteClick(item.id) }
-                                )
+                                SwipeRevealItem(
+                                    onDeleteClick = {
+                                        pendingDeleteId = item.id
+                                    }
+                                ) {
+                                    NoteListItem(
+                                        item = item,
+                                        onClick = { onNoteClick(item.id) }
+                                    )
+                                }
                             }
+                        }
+
+                        if (pendingDeleteId != null) {
+                            ConfirmDeleteDialog(
+                                onConfirm = {
+                                    onDeleteNote(pendingDeleteId!!) // ✅ DOĞRU YER
+                                    pendingDeleteId = null
+                                },
+                                onDismiss = { pendingDeleteId = null }
+                            )
                         }
                     }
                 }
@@ -127,6 +152,7 @@ fun NoteListScreen(
         }
     }
 }
+
 
 /**
  * Tek bir not item'i.

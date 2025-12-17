@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.awaitClose
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,27 +32,29 @@ class NoteRepositoryImpl @Inject constructor(
     private val noteSyncScheduler: NoteSyncScheduler
 ) : NoteRepository {
 
-    override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> = flow {
-        emit(Result.Loading)
+    override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> = channelFlow {
+        send(Result.Loading)
 
-        try {
-            val remoteData = remote.getNotesByCategory(categoryId)
-            val domainNotes = remoteData.map { (id, dto) -> dto.toDomain(id) }
-
-            local.saveNotes(domainNotes.map { it.toEntity() })
-
-            emit(Result.Success(domainNotes))
-        } catch (e: Exception) {
-            val localEntities = local.getNotesByCategory(categoryId)
-            val localDomain = localEntities.map { it.toDomain() }
-
-            if (localDomain.isNotEmpty()) {
-                emit(Result.Success(localDomain))
-            } else {
-                emit(Result.Error("Failed to load notes by category", e))
+        val localJob = launch(dispatchers.io) {
+            local.observeNotesByCategory(categoryId).collect { entities ->
+                send(Result.Success(entities.map { it.toDomain() }))
             }
         }
+
+        val remoteJob = launch(dispatchers.io) {
+            try {
+                val remoteData = remote.getNotesByCategory(categoryId)
+                val domainNotes = remoteData.map { (id, dto) -> dto.toDomain(id) }
+                local.saveNotes(domainNotes.map { it.toEntity(syncState = SyncState.SYNCED) })
+            } catch (_: Exception) { }
+        }
+
+        awaitClose {
+            localJob.cancel()
+            remoteJob.cancel()
+        }
     }.flowOn(dispatchers.io)
+
 
 
     override fun getNoteById(id: String): Flow<Result<Note>> =
@@ -105,29 +110,32 @@ class NoteRepositoryImpl @Inject constructor(
 //        }
 //    }.flowOn(dispatchers.io)
 
-    override fun getNotes(): Flow<Result<List<Note>>> =
-        remote.getNotes()
-            .map { remoteList ->
+    override fun getNotes(): Flow<Result<List<Note>>> = channelFlow {
+        send(Result.Loading)
+
+        //UI -> Room
+        val localJob = launch(dispatchers.io) {
+            local.observeNotes().collect { entities ->
+                val domain = entities.map { it.toDomain() }
+                send(Result.Success(domain))
+            }
+        }
+
+        //Remote -> Room
+        val remoteJob = launch(dispatchers.io) {
+            remote.getNotes().collect { remoteList ->
                 val domainNotes = remoteList.map { (id, dto) -> dto.toDomain(id) }
-
-                // update local
-                local.saveNotes(domainNotes.map { it.toEntity() })
-
-                Result.Success(domainNotes) as Result<List<Note>>
+                // remote on -> local sync
+                local.saveNotes(domainNotes.map { it.toEntity(syncState = SyncState.SYNCED) })
             }
-            .onStart { emit(Result.Loading) }  // ilk state
-            .catch { e ->
-                // if remote failed try local
-                val localEntities = local.getNotes()
-                val localDomain = localEntities.map { it.toDomain() }
+        }
 
-                if (localDomain.isNotEmpty()) {
-                    emit(Result.Success(localDomain))
-                } else {
-                    emit(Result.Error("Failed to observe notes", e))
-                }
-            }
-            .flowOn(dispatchers.io)
+        awaitClose {
+            localJob.cancel()
+            remoteJob.cancel()
+        }
+    }.flowOn(dispatchers.io)
+
 
     override suspend fun createNote(note: Note): Result<Note> {
         val id = note.id.ifBlank { UUID.randomUUID().toString() }
@@ -165,8 +173,12 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun deleteNote(id: String): Result<Unit> {
         return try {
-            remote.deleteNote(id)
-            local.deleteNote(id)
+            // 1) Offline-first: UI
+            local.markDeleted(id)
+
+            // 2) Remote(network on)
+            noteSyncScheduler.schedule()
+
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error("Failed to delete note", e)

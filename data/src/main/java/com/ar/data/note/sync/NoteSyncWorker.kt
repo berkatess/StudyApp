@@ -20,15 +20,26 @@ class NoteSyncWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val pendingNotes = local.getPendingNotes()
+        // 1) Pending delete
+        val pendingDeletes = local.getPendingDeletes()
+        pendingDeletes.forEach { entity ->
+            try {
+                remote.deleteNote(entity.id)
+                // iff firebase deleted delete local
+                local.deleteNote(entity.id)
+            } catch (e: Exception) {
+                return Result.retry()
+            }
+        }
 
+        // 2) Pending create
+        val pendingNotes = local.getPendingNotes()
         pendingNotes.forEach { entity ->
             try {
                 remote.createNote(
                     entity.id,
                     entity.toDomain().toRemoteDto()
                 )
-
                 local.markAsSynced(entity.id)
             } catch (e: Exception) {
                 return Result.retry()

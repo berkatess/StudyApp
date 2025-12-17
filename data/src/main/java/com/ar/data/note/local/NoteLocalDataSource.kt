@@ -1,5 +1,6 @@
 package com.ar.data.note.local
 
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,4 +29,16 @@ class NoteLocalDataSource @Inject constructor(
     suspend fun markAsSynced(id: String) {
         dao.updateSyncState(id, SyncState.SYNCED)
     }
+
+    fun observeNotes(): Flow<List<NoteEntity>> = dao.observeNotes()
+
+    fun observeNotesByCategory(categoryId: String): Flow<List<NoteEntity>> =
+        dao.observeNotesByCategory(categoryId)
+
+    suspend fun markDeleted(id: String) = dao.markDeleted(id)
+
+    suspend fun getPendingDeletes(): List<NoteEntity> =
+        dao.getNotesBySyncState(SyncState.PENDING_DELETE)
+
+    suspend fun hardDelete(id: String) = dao.hardDelete(id)
 }

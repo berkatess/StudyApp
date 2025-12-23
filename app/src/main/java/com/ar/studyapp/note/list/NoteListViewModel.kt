@@ -8,6 +8,7 @@ import com.ar.domain.category.model.Category
 import com.ar.domain.note.usecase.GetNotesUseCase
 import com.ar.domain.category.usecase.ObserveCategoriesUseCase
 import com.ar.domain.note.usecase.DeleteNoteUseCase
+import com.ar.domain.note.usecase.RefreshNotesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,8 @@ sealed class NotesUiState {
 class NoteListViewModel @Inject constructor(
     private val getNotesUseCase: GetNotesUseCase,
     private val observeCategoriesUseCase: ObserveCategoriesUseCase,
-    private val deleteNoteUseCase: DeleteNoteUseCase
+    private val deleteNoteUseCase: DeleteNoteUseCase,
+    private val refreshNotesUseCase: RefreshNotesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<NotesUiState>(NotesUiState.Loading)
@@ -49,6 +51,11 @@ class NoteListViewModel @Inject constructor(
 
     init {
         observeNotesAndCategories()
+        viewModelScope.launch { refreshNotesUseCase() }
+    }
+
+    fun onHomeVisible() {
+        viewModelScope.launch { refreshNotesUseCase() }
     }
 
     /**

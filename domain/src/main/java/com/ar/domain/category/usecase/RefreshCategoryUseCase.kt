@@ -4,10 +4,8 @@ import com.ar.core.result.Result
 import com.ar.domain.category.repository.CategoryRepository
 import javax.inject.Inject
 
-class DeleteCategoryUseCase @Inject constructor(
+class RefreshCategoriesUseCase @Inject constructor(
     private val repository: CategoryRepository
 ) {
-    suspend operator fun invoke(categoryId: String): Result<Unit> {
-        return repository.deleteCategory(categoryId)
-    }
+    suspend operator fun invoke(): Result<Unit> = repository.refreshCategories()
 }

@@ -89,4 +89,13 @@ class NoteRemoteDataSource @Inject constructor(
     suspend fun deleteNote(id: String) {
         notesCollection.document(id).delete().await()
     }
+
+    suspend fun fetchNotesOnce(): List<Pair<String, NoteRemoteDto>> {
+        val snapshot = notesCollection.get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val dto = doc.toObject(NoteRemoteDto::class.java)
+            dto?.let { doc.id to it }
+        }
+    }
+
 }

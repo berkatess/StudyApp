@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,8 +36,11 @@ fun NoteListRoute(
     onManageCategoriesClick: () -> Unit,
     viewModel: NoteListViewModel = hiltViewModel()
 ) {
-    // ViewModel'deki StateFlow'u Compose state'e çeviriyoruz
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.onHomeVisible()
+    }
 
     NoteListScreen(
         uiState = uiState,
@@ -46,6 +50,7 @@ fun NoteListRoute(
         onDeleteNote = viewModel::deleteNote
     )
 }
+
 
 /**
  * Saf UI katmanı:
@@ -140,7 +145,7 @@ fun NoteListScreen(
                         if (pendingDeleteId != null) {
                             ConfirmDeleteDialog(
                                 onConfirm = {
-                                    onDeleteNote(pendingDeleteId!!) // ✅ DOĞRU YER
+                                    onDeleteNote(pendingDeleteId!!)
                                     pendingDeleteId = null
                                 },
                                 onDismiss = { pendingDeleteId = null }

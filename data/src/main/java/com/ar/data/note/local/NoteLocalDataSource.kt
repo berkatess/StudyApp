@@ -1,5 +1,6 @@
 package com.ar.data.note.local
 
+import com.ar.data.sync.SyncState
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton

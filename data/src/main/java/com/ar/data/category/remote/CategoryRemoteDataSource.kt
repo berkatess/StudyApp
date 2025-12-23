@@ -54,12 +54,27 @@ class CategoryRemoteDataSource @Inject constructor(
         return docRef.id to dto
     }
 
+    suspend fun createCategory(id: String, dto: CategoryRemoteDto) {
+        categoriesCollection.document(id).set(dto).await()
+    }
+
+
     suspend fun updateCategory(id: String, dto: CategoryRemoteDto): Pair<String, CategoryRemoteDto> {
         categoriesCollection.document(id).set(dto).await()
         return id to dto
     }
 
+    suspend fun fetchCategoriesOnce(): List<Pair<String, CategoryRemoteDto>> {
+        val snapshot = categoriesCollection.get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val dto = doc.toObject(CategoryRemoteDto::class.java)
+            dto?.let { doc.id to it }
+        }
+    }
+
     suspend fun deleteCategory(id: String) {
         categoriesCollection.document(id).delete().await()
     }
+
+
 }

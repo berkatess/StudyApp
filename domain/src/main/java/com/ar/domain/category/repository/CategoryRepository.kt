@@ -19,7 +19,15 @@ interface CategoryRepository {
         order: Int = 0
     ): Result<Category>
 
-    suspend fun updateCategory(category: Category): Result<Category>
+    suspend fun updateCategory(
+        id: String,
+        name: String,
+        imageUrl: String?,
+        colorHex: String?,
+        order: Int
+    ): Result<Category>
+
+    suspend fun refreshCategories(): Result<Unit>
 
     suspend fun deleteCategory(id: String): Result<Unit>
 }

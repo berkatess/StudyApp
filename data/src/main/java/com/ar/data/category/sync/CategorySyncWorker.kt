@@ -1,40 +1,39 @@
-package com.ar.data.note.sync
+package com.ar.data.category.sync
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.ar.data.note.local.NoteLocalDataSource
-import com.ar.data.note.mapper.toDomain
-import com.ar.data.note.mapper.toRemoteDto
-import com.ar.data.note.remote.NoteRemoteDataSource
+import com.ar.data.category.local.CategoryLocalDataSource
+import com.ar.data.category.mapper.toDomain
+import com.ar.data.category.mapper.toRemoteDto
+import com.ar.data.category.remote.CategoryRemoteDataSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
 @HiltWorker
-class NoteSyncWorker @AssistedInject constructor(
+class CategorySyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val local: NoteLocalDataSource,
-    private val remote: NoteRemoteDataSource
+    private val local: CategoryLocalDataSource,
+    private val remote: CategoryRemoteDataSource
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val pendingDeletes = local.getPendingDeletes()
-        for (entity in pendingDeletes) {
+        // 1) DELETE
+        local.getPendingDeletes().forEach { entity ->
             try {
-                remote.deleteNote(entity.id)
+                remote.deleteCategory(entity.id)
                 local.hardDelete(entity.id)
             } catch (e: Exception) {
                 return Result.retry()
             }
         }
 
-        val pendingNotes = local.getPendingNotes()
-        for (entity in pendingNotes) {
+        // 2) CREATE
+        local.getPendingCreates().forEach { entity ->
             try {
-                val dto = entity.toDomain().toRemoteDto()
-                remote.updateNote(entity.id, dto)
+                remote.createCategory(entity.id, entity.toDomain().toRemoteDto())
                 local.markAsSynced(entity.id)
             } catch (e: Exception) {
                 return Result.retry()
@@ -43,5 +42,4 @@ class NoteSyncWorker @AssistedInject constructor(
 
         return Result.success()
     }
-
 }

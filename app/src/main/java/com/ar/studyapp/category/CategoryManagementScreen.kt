@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +23,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.ar.domain.category.model.Category
 import com.ar.studyapp.theme.CategoryColors
 import com.ar.studyapp.theme.toHexString
+import androidx.core.graphics.toColorInt
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 /**
  * Route katmanı:
@@ -43,7 +48,12 @@ fun CategoryManagementRoute(
         onNameChange = viewModel::onNameChange,
         onImageUrlChange = viewModel::onImageUrlChange,
         onColorSelectedHex = viewModel::onColorSelected,
-        onSubmitCategory = viewModel::onSubmitCategory
+        onSubmitCategory = viewModel::onSubmitCategory,
+
+        // ✅ EK: liste aksiyonları
+        onEditCategory = viewModel::onEditCategory,
+        onDeleteCategory = viewModel::deleteCategory,
+        onCancelEdit = viewModel::onCancelEdit
     )
 }
 
@@ -52,6 +62,7 @@ fun CategoryManagementRoute(
  * - Ne gösterileceğine (loading, error, liste) karar verir.
  * - Form inputlarını gösterir.
  */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryManagementScreen(
@@ -61,7 +72,12 @@ fun CategoryManagementScreen(
     onNameChange: (String) -> Unit,
     onImageUrlChange: (String) -> Unit,
     onColorSelectedHex: (String) -> Unit,
-    onSubmitCategory: () -> Unit
+    onSubmitCategory: () -> Unit,
+
+    // ✅ EK
+    onEditCategory: (Category) -> Unit,
+    onDeleteCategory: (String) -> Unit,
+    onCancelEdit: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -87,7 +103,7 @@ fun CategoryManagementScreen(
 
             // 🔹 FORM BÖLÜMÜ
             Text(
-                text = "Create new category",
+                text = if (formState.editingCategoryId.isNullOrBlank()) "Create new category" else "Edit category",
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -100,15 +116,15 @@ fun CategoryManagementScreen(
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = formState.imageUrl,
-                onValueChange = onImageUrlChange,
-                label = { Text("Image URL (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+//            Spacer(modifier = Modifier.height(8.dp))
+//
+//            OutlinedTextField(
+//                value = formState.imageUrl,
+//                onValueChange = onImageUrlChange,
+//                label = { Text("Image URL (optional)") },
+//                modifier = Modifier.fillMaxWidth(),
+//                singleLine = true
+//            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -134,27 +150,39 @@ fun CategoryManagementScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Button(
-                onClick = onSubmitCategory,
-                enabled = !formState.isSubmitting,
-                modifier = Modifier.align(Alignment.End)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (formState.isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(18.dp),
-                        strokeWidth = 2.dp
-                    )
+                // if editMode show cancel button
+                if (!formState.editingCategoryId.isNullOrBlank()) {
+                    TextButton(onClick = onCancelEdit) {
+                        Text("Cancel")
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving...")
-                } else {
-                    Text("Create")
+                }
+
+                Button(
+                    onClick = onSubmitCategory,
+                    enabled = !formState.isSubmitting
+                ) {
+                    if (formState.isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Saving...")
+                    } else {
+                        Text(if (formState.editingCategoryId.isNullOrBlank()) "Create" else "Update")
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 🔹 VAR OLAN KATEGORİLER LİSTESİ
+            // CategoryList
             Text(
                 text = "Existing categories",
                 style = MaterialTheme.typography.titleMedium
@@ -178,7 +206,7 @@ fun CategoryManagementScreen(
                     Text(
                         text = uiState.message,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
 
@@ -194,7 +222,11 @@ fun CategoryManagementScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(uiState.categories, key = { it.id }) { category ->
-                                CategoryListItem(category = category)
+                                CategoryListItem(
+                                    category = category,
+                                    onEdit = { onEditCategory(category) },
+                                    onDelete = { onDeleteCategory(category.id) }
+                                )
                             }
                         }
                     }
@@ -204,18 +236,17 @@ fun CategoryManagementScreen(
     }
 }
 
-/**
- * Renk seçeneklerini gösteren yatay satır.
- * Kullanıcı bir renge tıklayınca seçili hale gelir.
- */
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ColorPickerRow(
     selectedColorHex: String?,
     onColorSelectedHex: (String) -> Unit
 ) {
-    Row(
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         CategoryColors.colors.forEach { color ->
             val colorHex = color.toHexString()
@@ -227,7 +258,8 @@ fun ColorPickerRow(
                     .clip(CircleShape)
                     .border(
                         width = if (isSelected) 3.dp else 1.dp,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
                         shape = CircleShape
                     )
                     .clickable { onColorSelectedHex(colorHex) }
@@ -245,17 +277,22 @@ fun ColorPickerRow(
 }
 
 /**
- * Basit kategori satırı:
- * - Sol tarafta renk indikatörü
- * - Sağda kategori adı ve varsa imageUrl
+ * Kategori satırı:
+ * - Sol tarafta kategori rengi yuvarlak
+ * - Ortada ad + imageUrl
+ * - Sağda edit + delete iconu
+ *
+ * ✅ Satır tıklanınca edit yok (edit sadece icon)
  */
 @Composable
 fun CategoryListItem(
-    category: Category
+    category: Category,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val color = category.colorHex?.let {
         try {
-            Color(android.graphics.Color.parseColor(it))
+            Color(it.toColorInt())
         } catch (e: Exception) {
             MaterialTheme.colorScheme.secondary
         }
@@ -264,20 +301,25 @@ fun CategoryListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(16.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(color)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = CircleShape
+                )
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(2f)
         ) {
             Text(
                 text = category.name,
@@ -285,15 +327,34 @@ fun CategoryListItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (!category.imageUrl.isNullOrBlank()) {
-                Text(
-                    text = category.imageUrl!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+//            if (!category.imageUrl.isNullOrBlank()) {
+//                Text(
+//                    text = category.imageUrl!!,
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                    maxLines = 1,
+//                    overflow = TextOverflow.Ellipsis
+//                )
+//            }
+        }
+
+        IconButton(
+            onClick = onEdit,
+            modifier = Modifier.size(36.dp)) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Edit category"
+            )
+        }
+
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete category",
+            )
         }
     }
 }

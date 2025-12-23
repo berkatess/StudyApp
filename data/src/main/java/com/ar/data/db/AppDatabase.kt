@@ -13,7 +13,7 @@ import com.ar.data.note.local.NoteDao
         NoteEntity::class,
         CategoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 

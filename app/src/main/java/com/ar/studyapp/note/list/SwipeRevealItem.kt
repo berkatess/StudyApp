@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.*
@@ -36,6 +37,7 @@ fun SwipeRevealItem(
         Box(
             modifier = Modifier
                 .matchParentSize()
+                .clip(MaterialTheme.shapes.medium)
                 .background(MaterialTheme.colorScheme.errorContainer),
             contentAlignment = Alignment.CenterEnd
         ) {
@@ -54,11 +56,12 @@ fun SwipeRevealItem(
         // Ön katman
         Box(
             modifier = Modifier
+                .clip(MaterialTheme.shapes.medium)
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onHorizontalDrag = { _, dragAmount ->
-                            scope.launch { // ✅ BURASI
+                            scope.launch {
                                 val newOffset =
                                     (offsetX.value + dragAmount)
                                         .coerceIn(-actionWidthPx, 0f)

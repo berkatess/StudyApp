@@ -1,4 +1,4 @@
-package com.ar.data.note.local
+package com.ar.data.sync
 
 enum class SyncState {
     PENDING,

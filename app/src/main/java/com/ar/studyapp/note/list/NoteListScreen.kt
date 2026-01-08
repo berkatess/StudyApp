@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -130,15 +131,15 @@ fun NoteListScreen(
                                 key = { it.id }
                             ) { item ->
                                 SwipeRevealItem(
-                                    onDeleteClick = {
-                                        pendingDeleteId = item.id
-                                    }
-                                ) {
+                                    onDeleteClick = { pendingDeleteId = item.id }
+                                ) { shape ->
                                     NoteListItem(
                                         item = item,
-                                        onClick = { onNoteClick(item.id) }
+                                        onClick = { onNoteClick(item.id) },
+                                        shape = shape
                                     )
                                 }
+
                             }
                         }
 
@@ -166,7 +167,8 @@ fun NoteListScreen(
 @Composable
 fun NoteListItem(
     item: NoteListItemUiModel,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    shape: Shape
 ) {
     // Kategori rengi varsa onu kullan, yoksa default surface
     val backgroundColor: Color = item.categoryColorHex?.let { hex ->
@@ -181,6 +183,7 @@ fun NoteListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         )

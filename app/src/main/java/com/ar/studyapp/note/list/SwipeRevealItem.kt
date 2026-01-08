@@ -2,9 +2,9 @@ package com.ar.studyapp.note.list
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -12,9 +12,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -22,66 +28,106 @@ import kotlin.math.roundToInt
 fun SwipeRevealItem(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    actionWidth: Dp = 72.dp,
+    cornerRadius: Dp = 16.dp,
+    content: @Composable (shape: Shape) -> Unit
 ) {
-    val actionWidth = 72.dp
     val density = LocalDensity.current
     val actionWidthPx = with(density) { actionWidth.toPx() }
 
-    val offsetX = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope() // ✅ EKLENDİ
+    var offsetX by remember { mutableFloatStateOf(0f) } // 0 .. -actionWidthPx
+    val settleAnim = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    fun clamp(v: Float) = v.coerceIn(-actionWidthPx, 0f)
 
-        // Arka katman
+    val revealPx by remember {
+        derivedStateOf { (-offsetX).coerceIn(0f, actionWidthPx) }
+    }
+
+    val cs = MaterialTheme.colorScheme
+    val parentShape = RoundedCornerShape(cornerRadius)
+
+    // corner edge while swiping
+    val contentShape: Shape by remember {
+        derivedStateOf {
+            if (revealPx > 0.5f) {
+                RoundedCornerShape(
+                    topStart = cornerRadius,
+                    bottomStart = cornerRadius,
+                    topEnd = 0.dp,
+                    bottomEnd = 0.dp
+                )
+            } else parentShape
+        }
+    }
+
+
+    val seamPx = with(density) { 1.dp.toPx() }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(parentShape)
+    ) {
+        // background
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.errorContainer),
-            contentAlignment = Alignment.CenterEnd
+                .drawBehind {
+                    if (revealPx > 0f) {
+                        val left = (size.width - revealPx - seamPx).coerceAtLeast(0f)
+                        val width = revealPx + seamPx
+                        drawRect(
+                            color = cs.errorContainer,
+                            topLeft = Offset(left, 0f),
+                            size = Size(width, size.height)
+                        )
+                    }
+                }
+        )
+
+        // delete button
+        IconButton(
+            onClick = onDeleteClick,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .width(actionWidth)
+                .offset { IntOffset((actionWidthPx - revealPx).roundToInt(), 0) }
         ) {
-            IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier.width(actionWidth)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete",
+                tint = cs.onErrorContainer
+            )
         }
 
-        // Ön katman
+        // foreground (content)
         Box(
             modifier = Modifier
-                .clip(MaterialTheme.shapes.medium)
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
+                        onDragStart = {
+                            scope.launch { if (settleAnim.isRunning) settleAnim.stop() }
+                        },
                         onHorizontalDrag = { _, dragAmount ->
-                            scope.launch {
-                                val newOffset =
-                                    (offsetX.value + dragAmount)
-                                        .coerceIn(-actionWidthPx, 0f)
-                                offsetX.snapTo(newOffset)
-                            }
+                            offsetX = clamp(offsetX + dragAmount)
                         },
                         onDragEnd = {
-                            scope.launch { // ✅ BURASI
-                                val shouldOpen =
-                                    offsetX.value < -actionWidthPx * 0.3f
-                                offsetX.animateTo(
-                                    if (shouldOpen) -actionWidthPx else 0f,
-                                    animationSpec = tween(180)
-                                )
+                            val shouldOpen = offsetX < -actionWidthPx * 0.3f
+                            val target = if (shouldOpen) -actionWidthPx else 0f
+                            scope.launch {
+                                settleAnim.snapTo(offsetX)
+                                settleAnim.animateTo(target, tween(180))
+                                offsetX = settleAnim.value
                             }
                         }
                     )
                 }
         ) {
-            content()
+            // give shape to item
+            content(contentShape)
         }
     }
 }

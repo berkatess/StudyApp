@@ -27,6 +27,8 @@ class NoteLocalDataSource @Inject constructor(
         return dao.getNotesBySyncState(SyncState.PENDING)
     }
 
+    suspend fun hasAnyNotes(): Boolean = dao.countNotes() > 0
+
     suspend fun markAsSynced(id: String) {
         dao.updateSyncState(id, SyncState.SYNCED)
     }

@@ -49,4 +49,11 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE isDeleted = 0 AND categoryId = :categoryId ORDER BY createdAtMillis DESC")
     fun observeNotesByCategory(categoryId: String): Flow<List<NoteEntity>>
+
+    @Query("SELECT COUNT(*) FROM notes")
+    suspend fun countNotes(): Int
+
+
+
+
 }

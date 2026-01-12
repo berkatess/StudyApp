@@ -38,8 +38,9 @@ dependencies {
     implementation(project(":domain"))
 
     // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore.ktx)
+    api(platform(libs.firebase.bom))
+    api(libs.firebase.firestore.ktx)
+    api(libs.firebase.auth.ktx)
 
     // Room
     implementation(libs.androidx.room.runtime)

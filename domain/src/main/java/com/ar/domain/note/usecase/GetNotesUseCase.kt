@@ -1,5 +1,6 @@
 package com.ar.domain.note.usecase
 
+import com.ar.core.data.FetchStrategy
 import com.ar.core.result.Result
 import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
@@ -9,7 +10,9 @@ import javax.inject.Inject
 class GetNotesUseCase @Inject constructor(
     private val repository: NoteRepository
 ) {
-    operator fun invoke(): Flow<Result<List<Note>>> {
-        return repository.getNotes()
+    operator fun invoke(
+        strategy: FetchStrategy = FetchStrategy.FAST
+    ): Flow<Result<List<Note>>> {
+        return repository.getNotes(strategy)
     }
 }

@@ -1,5 +1,6 @@
 package com.ar.domain.note.repository
 
+import com.ar.core.data.FetchStrategy
 import com.ar.core.result.Result
 import com.ar.domain.note.model.Note
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +24,7 @@ class FakeNoteRepository : NoteRepository {
         notesResult = Result.Success(list)
     }
 
-    override fun getNotes(): Flow<Result<List<Note>>> {
+    override fun getNotes(strategy: FetchStrategy): Flow<Result<List<Note>>>{
         // If enabled, emit Loading first, then the current result (Success/Error)
         return if (emitLoadingFirst) {
             emitLoadingFirst = false
@@ -36,6 +37,8 @@ class FakeNoteRepository : NoteRepository {
         }
     }
 
+    override suspend fun hasAnyNotesLocally(): Boolean =
+        (notesResult as? Result.Success)?.data?.isNotEmpty() == true
 
     override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> =
         error("Not used in this unit test")

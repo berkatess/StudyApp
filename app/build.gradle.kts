@@ -74,6 +74,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore.ktx)
 
+
     // Modüles
     implementation(project(":domain"))
     implementation(project(":data"))

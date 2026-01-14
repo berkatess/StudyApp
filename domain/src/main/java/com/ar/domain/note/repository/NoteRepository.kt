@@ -9,7 +9,11 @@ interface NoteRepository {
 
     fun getNotes(strategy: FetchStrategy = FetchStrategy.FAST): Flow<Result<List<Note>>>
 
-    fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>>
+    fun getNotesByCategory(
+        categoryId: String,
+        strategy: FetchStrategy = FetchStrategy.FAST
+    ): Flow<Result<List<Note>>>
+
 
     fun getNoteById(id: String): Flow<Result<Note>>
 

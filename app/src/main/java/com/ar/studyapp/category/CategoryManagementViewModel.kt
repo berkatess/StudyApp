@@ -9,6 +9,7 @@ import com.ar.domain.category.model.Category
 import com.ar.domain.category.usecase.CreateCategoryUseCase
 import com.ar.domain.category.usecase.DeleteCategoryUseCase
 import com.ar.domain.category.usecase.ObserveCategoriesUseCase
+import com.ar.domain.category.usecase.RefreshCategoriesUseCase
 import com.ar.domain.category.usecase.UpdateCategoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,11 +23,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * UI'daki kategori yönetim ekranı için ViewModel.
+ * ViewModel for Category Management screen.
  *
- * - Kategorileri listeler
- * - Kategori ekler / siler / günceller
- * - Form state'ini yönetir
+ * Responsibilities:
+ * - Observes categories (local as SSOT) with a chosen FetchStrategy
+ * - Triggers a one-shot refresh when the screen opens
+ * - Creates / updates / deletes categories
+ * - Manages form state
  */
 sealed class CategoryUiState {
     object Loading : CategoryUiState()
@@ -34,9 +37,6 @@ sealed class CategoryUiState {
     data class Error(val message: String) : CategoryUiState()
 }
 
-/**
- * Form state: kullanıcı yeni kategori oluştururken girdiği değerler.
- */
 data class CategoryFormState(
     val editingCategoryId: String? = null,
     val name: String = "",
@@ -52,7 +52,8 @@ class CategoryManagementViewModel @Inject constructor(
     private val createCategoryUseCase: CreateCategoryUseCase,
     private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val updateCategoryUseCase: UpdateCategoryUseCase,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val refreshCategoriesUseCase: RefreshCategoriesUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CategoryUiState>(CategoryUiState.Loading)
@@ -64,12 +65,14 @@ class CategoryManagementViewModel @Inject constructor(
     // User preference (optional). Keep FAST as default.
     private val userPreferredStrategy = MutableStateFlow(FetchStrategy.FAST)
 
-    // Observe connectivity and derive an effective strategy for observing categories.
-    // Offline => force CACHED, Online => use preferred (typically FAST).
+    // Connectivity state.
     private val isOnline: StateFlow<Boolean> =
         networkMonitor.isOnline
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    // Effective strategy:
+    // Offline -> force CACHED (local only)
+    // Online  -> use preferred (typically FAST)
     private val effectiveStrategy: StateFlow<FetchStrategy> =
         combine(userPreferredStrategy, isOnline) { preferred, online ->
             if (!online) FetchStrategy.CACHED else preferred
@@ -77,6 +80,7 @@ class CategoryManagementViewModel @Inject constructor(
 
     init {
         observeCategories()
+        refreshOnScreenOpen()
     }
 
     private fun observeCategories() {
@@ -90,6 +94,25 @@ class CategoryManagementViewModel @Inject constructor(
                         is Result.Error -> CategoryUiState.Error(result.message ?: "Unknown error")
                     }
                 }
+        }
+    }
+
+    /**
+     * One-shot refresh when the screen opens.
+     * Safe: repository treats offline as a no-op success (or can just fail gracefully).
+     */
+    private fun refreshOnScreenOpen() {
+        viewModelScope.launch {
+            refreshCategoriesUseCase()
+        }
+    }
+
+    /**
+     * Optional: call this from pull-to-refresh / retry button if you have one.
+     */
+    fun onRefresh() {
+        viewModelScope.launch {
+            refreshCategoriesUseCase()
         }
     }
 
@@ -155,14 +178,12 @@ class CategoryManagementViewModel @Inject constructor(
             )
 
             val result = if (current.editingCategoryId == null) {
-                // Create
                 createCategoryUseCase(
                     name = current.name.trim(),
                     imageUrl = current.imageUrl.takeIf { it.isNotBlank() },
                     colorHex = current.selectedColorHex
                 )
             } else {
-                // Update
                 updateCategoryUseCase(
                     id = current.editingCategoryId,
                     name = current.name.trim(),

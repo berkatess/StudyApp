@@ -40,8 +40,10 @@ class FakeNoteRepository : NoteRepository {
     override suspend fun hasAnyNotesLocally(): Boolean =
         (notesResult as? Result.Success)?.data?.isNotEmpty() == true
 
-    override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> =
+    override fun getNotesByCategory(categoryId: String, strategy: FetchStrategy): Flow<Result<List<Note>>> {
         error("Not used in this unit test")
+    }
+
 
     override fun getNoteById(id: String): Flow<Result<Note>> =
         error("Not used in this unit test")

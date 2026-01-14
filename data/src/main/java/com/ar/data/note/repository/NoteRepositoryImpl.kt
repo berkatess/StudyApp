@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.flow
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,28 +38,107 @@ class NoteRepositoryImpl @Inject constructor(
 ) : NoteRepository {
 
 
-    override fun getNotesByCategory(categoryId: String): Flow<Result<List<Note>>> = channelFlow {
+    override fun getNotesByCategory(
+        categoryId: String,
+        strategy: FetchStrategy
+    ): Flow<Result<List<Note>>> = when (strategy) {
+        FetchStrategy.FAST     -> getNotesByCategoryFast(categoryId)
+        FetchStrategy.CACHED   -> getNotesByCategoryCached(categoryId)
+        FetchStrategy.FRESH    -> getNotesByCategoryFresh(categoryId, saveToLocal = true)
+        FetchStrategy.FALLBACK -> getNotesByCategoryFallback(categoryId, saveToLocal = true)
+        FetchStrategy.SYNCED   -> getNotesByCategorySynced(categoryId)
+    }
+
+
+    private fun getNotesByCategoryFast(
+        categoryId: String
+    ): Flow<Result<List<Note>>> = channelFlow {
         send(Result.Loading)
 
         val localJob = launch(dispatchers.io) {
-            local.observeNotesByCategory(categoryId).collect { entities ->
-                send(Result.Success(entities.map { it.toDomain() }))
+            getNotesLocalByCategory(categoryId).collect {
+                send(Result.Success(it))
             }
         }
 
         val remoteJob = launch(dispatchers.io) {
-            try {
-                val remoteData = remote.getNotesByCategory(categoryId)
-                val domainNotes = remoteData.map { (id, dto) -> dto.toDomain(id) }
-                local.saveNotes(domainNotes.map { it.toEntity(syncState = SyncState.SYNCED) })
-            } catch (_: Exception) { }
+            if (networkMonitor.isOnlineNow()) {
+                runCatching {
+                    val notes = fetchNotesRemoteByCategoryOnce(categoryId)
+                    cacheRemoteNotesAsSynced(notes)
+                }
+            }
         }
 
         awaitClose {
             localJob.cancel()
             remoteJob.cancel()
         }
+    }
+
+    private fun getNotesByCategoryCached(categoryId: String): Flow<Result<List<Note>>> =
+        getNotesLocalByCategory(categoryId)
+            .map<List<Note>, Result<List<Note>>> { Result.Success(it) }
+            .onStart { emit(Result.Loading) }
+            .catch { e -> emit(Result.Error("Failed to load notes locally", e)) }
+            .flowOn(dispatchers.io)
+
+
+    private fun getNotesByCategoryFresh(
+        categoryId: String,
+        saveToLocal: Boolean
+    ): Flow<Result<List<Note>>> =
+        getNotesRemoteByCategory(categoryId)
+            .map<List<Note>, Result<List<Note>>> { domain ->
+                if (saveToLocal) runCatching { cacheRemoteNotesAsSynced(domain) }
+                Result.Success(domain)
+            }
+            .onStart { emit(Result.Loading) }
+            .catch { e -> emit(Result.Error("Failed to load notes from remote", e)) }
+            .flowOn(dispatchers.io)
+
+
+    private fun getNotesByCategoryFallback(
+        categoryId: String,
+        saveToLocal: Boolean
+    ): Flow<Result<List<Note>>> = channelFlow {
+        send(Result.Loading)
+
+        val remoteOk = runCatching {
+            getNotesRemoteByCategory(categoryId).collect { domain ->
+                if (saveToLocal) runCatching { cacheRemoteNotesAsSynced(domain) }
+                send(Result.Success(domain))
+            }
+        }.isSuccess
+
+        if (!remoteOk) {
+            getNotesLocalByCategory(categoryId).collect { notes ->
+                send(Result.Success(notes))
+            }
+        }
+    }.catch { e ->
+        emit(Result.Error("Failed to load notes (remote + local fallback)", e))
     }.flowOn(dispatchers.io)
+
+
+    private fun getNotesByCategorySynced(categoryId: String): Flow<Result<List<Note>>> = flow {
+        emit(Result.Loading)
+
+        if (!networkMonitor.isOnlineNow()) {
+            emit(Result.Error("No internet connection"))
+            return@flow
+        }
+
+        val domainNotes = fetchNotesRemoteByCategoryOnce(categoryId)
+        cacheRemoteNotesAsSynced(domainNotes)
+
+        emit(Result.Success(domainNotes))
+    }.catch { e ->
+        emit(Result.Error("Failed to sync notes", e))
+    }.flowOn(dispatchers.io)
+
+
+
 
 
 
@@ -89,31 +169,6 @@ class NoteRepositoryImpl @Inject constructor(
             }
             .flowOn(dispatchers.io)
 
-//    override fun getNoteById(id: String): Flow<Result<Note>> = flow {
-//        emit(Result.Loading)
-//
-//        try {
-//            val remoteResult = remote.getNoteById(id)
-//            if (remoteResult == null) {
-//                emit(Result.Error("Note not found"))
-//                return@flow
-//            }
-//
-//            val (docId, dto) = remoteResult
-//            val domainNote = dto.toDomain(docId)
-//
-//            local.saveNote(domainNote.toEntity())
-//
-//            emit(Result.Success(domainNote))
-//        } catch (e: Exception) {
-//            val localEntity = local.getNoteById(id)
-//            if (localEntity == null) {
-//                emit(Result.Error("Note not found locally", e))
-//            } else {
-//                emit(Result.Success(localEntity.toDomain()))
-//            }
-//        }
-//    }.flowOn(dispatchers.io)
 
     override fun getNotes(strategy: FetchStrategy): Flow<Result<List<Note>>> = when (strategy) {
         FetchStrategy.FAST     -> getNotesFast()
@@ -127,17 +182,16 @@ class NoteRepositoryImpl @Inject constructor(
         send(Result.Loading)
 
         val localJob = launch(dispatchers.io) {
-            local.observeNotes().collect { entities ->
-                send(Result.Success(entities.map { it.toDomain() }))
+            getNotesLocal().collect { notes ->
+                send(Result.Success(notes))
             }
         }
 
         val remoteJob = launch(dispatchers.io) {
             if (networkMonitor.isOnlineNow()) {
                 runCatching {
-                    val remoteList = remote.fetchNotesOnce()
-                    val domainNotes = remoteList.map { (id, dto) -> dto.toDomain(id) }
-                    local.saveNotes(domainNotes.map { it.toEntity(syncState = SyncState.SYNCED) })
+                    val domainNotes = fetchNotesRemoteOnce()
+                    cacheRemoteNotesAsSynced(domainNotes)
                 }
             }
         }
@@ -148,27 +202,20 @@ class NoteRepositoryImpl @Inject constructor(
         }
     }.flowOn(dispatchers.io)
 
+
     private fun getNotesCached(): Flow<Result<List<Note>>> =
-        local.observeNotes()
-            .map<List<NoteEntity>, Result<List<Note>>> { entities ->
-                Result.Success(entities.map { it.toDomain() })
-            }
+        getNotesLocal()
+            .map<List<Note>, Result<List<Note>>> { notes -> Result.Success(notes) }
             .onStart { emit(Result.Loading) }
             .catch { e -> emit(Result.Error("Failed to load notes locally", e)) }
             .flowOn(dispatchers.io)
 
 
+
     private fun getNotesFresh(saveToLocal: Boolean): Flow<Result<List<Note>>> =
-        remote.getNotes()
-            .map<List<Pair<String, NoteRemoteDto>>, Result<List<Note>>> { pairs ->
-                val domain = pairs.map { (id, dto) -> dto.toDomain(id) }
-
-                if (saveToLocal) {
-                    runCatching {
-                        local.saveNotes(domain.map { it.toEntity(syncState = SyncState.SYNCED) })
-                    }
-                }
-
+        getNotesRemote()
+            .map<List<Note>, Result<List<Note>>> { domain ->
+                if (saveToLocal) runCatching { cacheRemoteNotesAsSynced(domain) }
                 Result.Success(domain)
             }
             .onStart { emit(Result.Loading) }
@@ -176,30 +223,26 @@ class NoteRepositoryImpl @Inject constructor(
             .flowOn(dispatchers.io)
 
 
+
     private fun getNotesFallback(saveToLocal: Boolean): Flow<Result<List<Note>>> = channelFlow {
         send(Result.Loading)
 
         val remoteOk = runCatching {
-            remote.getNotes().collect { pairs ->
-                val domain = pairs.map { (id, dto) -> dto.toDomain(id) }
-                if (saveToLocal) {
-                    runCatching {
-                        local.saveNotes(domain.map { it.toEntity(syncState = SyncState.SYNCED) })
-                    }
-                }
+            getNotesRemote().collect { domain ->
+                if (saveToLocal) runCatching { cacheRemoteNotesAsSynced(domain) }
                 send(Result.Success(domain))
             }
         }.isSuccess
 
         if (!remoteOk) {
-            // remote patladı -> local observe
-            local.observeNotes().collect { entities ->
-                send(Result.Success(entities.map { it.toDomain() }))
+            getNotesLocal().collect { notes ->
+                send(Result.Success(notes))
             }
         }
     }.catch { e ->
         emit(Result.Error("Failed to load notes (remote + local fallback)", e))
     }.flowOn(dispatchers.io)
+
 
 
 
@@ -235,9 +278,8 @@ class NoteRepositoryImpl @Inject constructor(
             return@flow
         }
 
-        val remoteList = remote.fetchNotesOnce()
-        val domainNotes = remoteList.map { (id, dto) -> dto.toDomain(id) }
-        local.saveNotes(domainNotes.map { it.toEntity(syncState = SyncState.SYNCED) })
+        val domainNotes = fetchNotesRemoteOnce()
+        cacheRemoteNotesAsSynced(domainNotes)
 
         emit(Result.Success(domainNotes))
     }.catch { e ->
@@ -300,14 +342,54 @@ class NoteRepositoryImpl @Inject constructor(
         return try {
             if (!networkMonitor.isOnlineNow()) return Result.Success(Unit)
 
-            val remoteList = remote.fetchNotesOnce()
-            val domainNotes = remoteList.map { (id, dto) -> dto.toDomain(id) }
-            local.saveNotes(domainNotes.map { it.toEntity(syncState = SyncState.SYNCED) })
+            val domainNotes = fetchNotesRemoteOnce()
+            cacheRemoteNotesAsSynced(domainNotes)
 
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error("Failed to refresh notes", e)
         }
     }
+
+
+
+    /**
+     * Single-source-of-truth helpers used by fetch strategies.
+     *
+     * Keep these focused on *data retrieval* + *mapping*.
+     * Side-effects like caching are done explicitly by the strategy that needs it.
+     */
+    private fun getNotesLocal(): Flow<List<Note>> =
+        local.observeNotes()
+            .map { entities -> entities.map { it.toDomain() } }
+
+    private fun getNotesRemote(): Flow<List<Note>> =
+        remote.getNotes()
+            .map { pairs -> pairs.map { (id, dto) -> dto.toDomain(id) } }
+
+    private suspend fun fetchNotesRemoteOnce(): List<Note> =
+        remote.fetchNotesOnce().map { (id, dto) -> dto.toDomain(id) }
+
+    private fun getNotesRemoteByCategory(categoryId: String): Flow<List<Note>> =
+        remote.observeNotesByCategory(categoryId)
+            .map { pairs -> pairs.map { (id, dto) -> dto.toDomain(id) } }
+
+
+    private fun getNotesLocalByCategory(categoryId: String): Flow<List<Note>> =
+        local.observeNotesByCategory(categoryId)
+            .map { entities -> entities.map { it.toDomain() } }
+
+    private suspend fun fetchNotesRemoteByCategoryOnce(
+        categoryId: String
+    ): List<Note> =
+        remote.fetchNotesByCategoryOnce(categoryId)
+            .map { (id, dto) -> dto.toDomain(id) }
+
+    private suspend fun cacheRemoteNotesAsSynced(notes: List<Note>) {
+        local.saveNotes(
+            notes.map { it.toEntity(syncState = SyncState.SYNCED) }
+        )
+    }
+
 
 }

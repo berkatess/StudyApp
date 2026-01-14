@@ -69,6 +69,42 @@ class NoteRemoteDataSource @Inject constructor(
         }
     }
 
+    suspend fun fetchNotesByCategoryOnce(
+        categoryId: String
+    ): List<Pair<String, NoteRemoteDto>> {
+        val snapshot = notesCollection
+            .whereEqualTo("categoryId", categoryId)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            val dto = doc.toObject(NoteRemoteDto::class.java)
+            dto?.let { doc.id to it }
+        }
+    }
+
+
+    fun observeNotesByCategory(categoryId: String): Flow<List<Pair<String, NoteRemoteDto>>> = callbackFlow {
+        val registration = notesCollection
+            .whereEqualTo("categoryId", categoryId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    val dto = doc.toObject(NoteRemoteDto::class.java)
+                    dto?.let { doc.id to it }
+                } ?: emptyList()
+
+                trySend(list)
+            }
+
+        awaitClose { registration.remove() }
+    }
+
+
     suspend fun getNoteById(id: String): Pair<String, NoteRemoteDto>? {
         val doc = notesCollection.document(id).get().await()
         val dto = doc.toObject(NoteRemoteDto::class.java) ?: return null

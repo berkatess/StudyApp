@@ -21,7 +21,7 @@ class NoteSyncSchedulerImpl @Inject constructor(
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             "note_sync",
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }

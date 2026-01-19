@@ -22,13 +22,14 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.ar.domain.note.model.Note
+import com.ar.studyapp.anim.SwipeRevealItem
+import com.ar.studyapp.dialog.ConfirmDeleteDialog
 
 /**
  * Route layer:
- * - ViewModel'i alır (Hilt ile)
- * - Flow'u collect eder
- * - Saf UI olan NoteListScreen'e parametreleri geçirir
+ * - Obtains the ViewModel (via Hilt)
+ * - Collects the state Flow
+ * - Passes data and callbacks to the pure UI NoteListScreen
  */
 @Composable
 fun NoteListRoute(
@@ -54,9 +55,9 @@ fun NoteListRoute(
 
 
 /**
- * Saf UI katmanı:
- * - Gelen uiState'e göre ekranda ne gösterileceğine karar verir.
- * - ViewModel bilmez, sadece state + callback alır.
+ * Pure UI layer:
+ * - Decides what to render based on the given uiState
+ * - Does not know about the ViewModel, only receives state and callbacks
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +66,7 @@ fun NoteListScreen(
     onNoteClick: (String) -> Unit,
     onAddNoteClick: () -> Unit,
     onManageCategoriesClick: () -> Unit,
-    onDeleteNote: (String) -> Unit // ✅ EKLENDİ
+    onDeleteNote: (String) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -139,7 +140,6 @@ fun NoteListScreen(
                                         shape = shape
                                     )
                                 }
-
                             }
                         }
 
@@ -161,8 +161,8 @@ fun NoteListScreen(
 
 
 /**
- * Tek bir not item'i.
- * Arka plan rengi, note'un kategorisinin rengiyle aynı.
+ * A single note list item.
+ * The background color matches the note's category color.
  */
 @Composable
 fun NoteListItem(
@@ -170,7 +170,7 @@ fun NoteListItem(
     onClick: () -> Unit,
     shape: Shape
 ) {
-    // Kategori rengi varsa onu kullan, yoksa default surface
+    // Use category color if available, otherwise fall back to the default surface color
     val backgroundColor: Color = item.categoryColorHex?.let { hex ->
         try {
             Color(android.graphics.Color.parseColor(hex))
@@ -198,7 +198,8 @@ fun NoteListItem(
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface // kategori rengi koyu ise override etmeyi düşünebiliriz
+                color = MaterialTheme.colorScheme.onSurface
+                // If the category color is too dark, this could be overridden
             )
 
             if (!item.categoryName.isNullOrBlank()) {

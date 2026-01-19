@@ -1,4 +1,4 @@
-package com.ar.studyapp.note.list
+package com.ar.studyapp.dialog
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable

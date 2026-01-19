@@ -2,6 +2,7 @@ package com.ar.studyapp.note.detail
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -17,11 +18,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun NoteDetailRoute(
-    noteId: String,                 
+    noteId: String,
     onBackClick: () -> Unit,
     viewModel: NoteDetailViewModel = hiltViewModel()
 ) {
-
     LaunchedEffect(noteId) {
         viewModel.loadNote(noteId)
     }
@@ -30,7 +30,9 @@ fun NoteDetailRoute(
 
     NoteDetailScreen(
         uiState = uiState,
-        onBackClick = onBackClick
+        onBackClick = onBackClick,
+        onTitleChange = { viewModel.onEvent(NoteDetailEvent.TitleChanged(it)) },
+        onContentChange = { viewModel.onEvent(NoteDetailEvent.ContentChanged(it)) },
     )
 }
 
@@ -38,7 +40,9 @@ fun NoteDetailRoute(
 @Composable
 fun NoteDetailScreen(
     uiState: NoteDetailUiState,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onTitleChange: (String) -> Unit,
+    onContentChange: (String) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -46,7 +50,7 @@ fun NoteDetailScreen(
                 title = {
                     Text(
                         when (uiState) {
-                            is NoteDetailUiState.Success -> uiState.note.title
+                            is NoteDetailUiState.Success -> uiState.titleDraft
                             else -> "Note Detail"
                         }
                     )
@@ -69,9 +73,7 @@ fun NoteDetailScreen(
         ) {
             when (uiState) {
                 is NoteDetailUiState.Loading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
                 is NoteDetailUiState.Error -> {
@@ -90,15 +92,34 @@ fun NoteDetailScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
-                        Text(
-                            text = uiState.note.title,
-                            style = MaterialTheme.typography.headlineSmall
+
+                        BasicTextField(
+                            value = uiState.titleDraft,
+                            onValueChange = onTitleChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.headlineSmall
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = uiState.note.content,
-                            style = MaterialTheme.typography.bodyLarge
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        BasicTextField(
+                            value = uiState.contentDraft,
+                            onValueChange = onContentChange,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 150.dp),
+                            textStyle = MaterialTheme.typography.bodyLarge
                         )
+
+                        if (uiState.saveError != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = uiState.saveError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
                 }
             }

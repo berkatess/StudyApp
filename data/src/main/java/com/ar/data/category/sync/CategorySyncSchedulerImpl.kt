@@ -21,7 +21,7 @@ class CategorySyncSchedulerImpl @Inject constructor(
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             "category_sync",
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }

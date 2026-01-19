@@ -33,6 +33,10 @@ class NoteLocalDataSource @Inject constructor(
         dao.updateSyncState(id, SyncState.SYNCED)
     }
 
+    suspend fun updateNote(note: NoteEntity){
+
+    }
+
     fun observeNotes(): Flow<List<NoteEntity>> = dao.observeNotes()
 
     fun observeNotesByCategory(categoryId: String): Flow<List<NoteEntity>> =

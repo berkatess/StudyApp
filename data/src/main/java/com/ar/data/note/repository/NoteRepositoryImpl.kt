@@ -287,29 +287,35 @@ class NoteRepositoryImpl @Inject constructor(
     }.flowOn(dispatchers.io)
 
 
-
-
     override suspend fun updateNote(note: Note): Result<Note> {
-        return try {
-            local.saveNote(note.toEntity(syncState = SyncState.PENDING))
+        if (note.id.isBlank()) return Result.Error("Note id cannot be empty")
 
+        return try {
+            //Local: optimistic update (PENDING)
+            local.updateNote(
+                note.toEntity(syncState = SyncState.PENDING)
+            )
+
+            //Remote attempt (online)
             if (networkMonitor.isOnlineNow()) {
                 runCatching {
                     remote.updateNote(note.id, note.toRemoteDto())
-                    local.markAsSynced(note.id)
+                    local.markAsSynced(note.id) // SYNCED
                 }.getOrElse {
+                    // Remote fail => later sync
                     noteSyncScheduler.schedule()
                 }
             } else {
+                // Offline => later sync
                 noteSyncScheduler.schedule()
             }
 
+            //UX: local already updated
             Result.Success(note)
         } catch (e: Exception) {
-            Result.Error("Failed to update note locally", e)
+            Result.Error("Failed to update note", e)
         }
     }
-
 
 
     override suspend fun deleteNote(id: String): Result<Unit> {
@@ -385,10 +391,25 @@ class NoteRepositoryImpl @Inject constructor(
         remote.fetchNotesByCategoryOnce(categoryId)
             .map { (id, dto) -> dto.toDomain(id) }
 
+    /**
+     * Writes remote data into local cache as SYNCED.
+     * Pending local changes (PENDING / PENDING_DELETE) are never overwritten.
+     *
+     * This prevents "revert to old state after update" issues.
+     */
+
     private suspend fun cacheRemoteNotesAsSynced(notes: List<Note>) {
-        local.saveNotes(
-            notes.map { it.toEntity(syncState = SyncState.SYNCED) }
-        )
+        val pendingIds = local.getPendingNotes()
+            .mapTo(mutableSetOf()) { it.id }
+            .apply { addAll(local.getPendingDeletes().map { it.id }) }
+
+        val toUpsert = notes
+            .filterNot { it.id in pendingIds }
+            .map { it.toEntity(syncState = SyncState.SYNCED) }
+
+        if (toUpsert.isNotEmpty()) {
+            local.saveNotes(toUpsert)
+        }
     }
 
 

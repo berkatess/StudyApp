@@ -12,30 +12,33 @@ import com.ar.studyapp.note.navigation.NoteNavGraph
 import com.ar.studyapp.ui.theme.Theme
 
 /**
- * Uygulamanın giriş noktası.
- * - @AndroidEntryPoint: Hilt'in bu Activity'ye ViewModel ve Dependency enjekte edebilmesi için gerekli.
- * - setContent: Compose UI hiyerarşisini başlatır.
+ * Application entry point.
+ *
+ * - @AndroidEntryPoint: Required for Hilt to inject ViewModels and dependencies
+ *   into this Activity.
+ * - setContent: Initializes the Compose UI hierarchy.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Status bar / navigation bar'ı içerikle hizalamak için (isteğe bağlı)
+
+        // Align status bar / navigation bar with the content (optional)
         enableEdgeToEdge()
 
         setContent {
-            // Eğer kendi Compose temanız varsa (ör: StudyAppTheme) onu kullan.
-            // Burada basitçe MaterialTheme üzerinden gidiyorum, sen kendi temana wrap edebilirsin.
-            Theme {   // yoksa aşağıda basit versiyonunu da veriyorum
+            // If you have a custom Compose theme (e.g. StudyAppTheme), use it here.
+            // For now, this is wrapped with Theme,
+            // you can replace it with your own theme implementation.
+            Theme {
                 Surface(
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Bütün Note modülünün navigation grafiğini çağırıyoruz.
-                    // Artık NoteNavGraph içinden:
+                    // Call the navigation graph of the Note module.
+                    // From inside NoteNavGraph, the following composables will be displayed:
                     // - NoteListRoute
                     // - NoteDetailRoute
-                    // composable'ları çalışacak.
                     NoteNavGraph(
                         modifier = Modifier
                     )

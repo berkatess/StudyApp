@@ -1,4 +1,4 @@
-package com.ar.studyapp.note.list
+package com.ar.studyapp.anim
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween

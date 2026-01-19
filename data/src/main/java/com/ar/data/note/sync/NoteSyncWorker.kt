@@ -20,6 +20,8 @@ class NoteSyncWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+
+        android.util.Log.d("NoteSyncWorker", "WORKER STARTED")
         val pendingDeletes = local.getPendingDeletes()
         for (entity in pendingDeletes) {
             try {

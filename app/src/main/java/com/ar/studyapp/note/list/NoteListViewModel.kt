@@ -47,10 +47,26 @@ class NoteListViewModel @Inject constructor(
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
+    /**
+     * SSOT output for other screens (e.g., Detail).
+     *
+     * Home already owns the source-of-truth stream.
+     * We simply expose the full Note list here so Detail can select a single note by id
+     * without creating another data source (no extra remote/db fetch in detail).
+     *
+     * This does NOT change Home behavior.
+     */
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+    val notes: StateFlow<List<Note>> = _notes
+
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories
+
     private val _uiState = MutableStateFlow<NotesUiState>(NotesUiState.Loading)
     val uiState: StateFlow<NotesUiState> = _uiState
 
     private val userPreferredStrategy = MutableStateFlow(FetchStrategy.FAST)
+
 
     private val isOnline: StateFlow<Boolean> =
         networkMonitor.isOnline
@@ -64,6 +80,7 @@ class NoteListViewModel @Inject constructor(
     init {
         observeNotesAndCategories()
 
+        // Initial sync when app is online and local storage is empty.
         viewModelScope.launch {
             val onlineNow = networkMonitor.isOnlineNow()
             if (onlineNow && !noteRepository.hasAnyNotesLocally()) {
@@ -71,6 +88,7 @@ class NoteListViewModel @Inject constructor(
             }
         }
 
+        // When coming back online, try to sync if local storage is empty.
         viewModelScope.launch {
             networkMonitor.isOnline
                 .filter { it }
@@ -127,6 +145,11 @@ class NoteListViewModel @Inject constructor(
                     val notes: List<Note> = notesResult.data
                     val categories: List<Category> = categoriesResult.data
                     val categoriesById = categories.associateBy { it.id }
+
+                    // Update SSOT list for consumers like Detail.
+                    _notes.value = notes
+
+                    _categories.value = categories
 
                     val uiItems = notes.map { note ->
                         val category = note.categoryId?.let { categoriesById[it] }

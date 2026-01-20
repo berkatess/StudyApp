@@ -34,7 +34,7 @@ class NoteLocalDataSource @Inject constructor(
     }
 
     suspend fun updateNote(note: NoteEntity){
-
+        dao.updateNote(note)
     }
 
     fun observeNotes(): Flow<List<NoteEntity>> = dao.observeNotes()

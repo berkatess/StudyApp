@@ -16,27 +16,59 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ar.domain.category.model.Category
 import com.ar.studyapp.category.menu.CategoryDropdown
-import com.ar.studyapp.category.menu.CategoryFabMenu
 import com.ar.studyapp.note.list.NoteListViewModel
+import com.ar.studyapp.note.list.NotesUiState
+import com.ar.studyapp.note.navigation.NoteDestinations
 
 @Composable
 fun NoteDetailRoute(
-    noteId: String,
+    mode: String?,
+    noteId: String?,
     noteListViewModel: NoteListViewModel,
     categories: List<Category>,
     onBackClick: () -> Unit,
+    onCreated: (String) -> Unit,
     viewModel: NoteDetailViewModel = hiltViewModel()
 ) {
-    val notes by noteListViewModel.notes.collectAsState()
-    val note = notes.firstOrNull { it.id == noteId }
+    // Keep the original "fill detail from list" approach (SSOT = NoteListViewModel.notes),
+    // but make it reactive to avoid race conditions (blank detail on first open).
+    val notes by noteListViewModel.notes.collectAsStateWithLifecycle()
+    val listUiState by noteListViewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(note) {
-        if (note != null) viewModel.onNoteUpdated(note)
+    LaunchedEffect(mode, noteId) {
+        viewModel.start(mode = mode, noteId = noteId)
     }
 
-    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(mode, noteId, notes, listUiState) {
+        // Create mode: do not wait for list data, draft is already ready.
+        if (mode == NoteDestinations.MODE_CREATE) return@LaunchedEffect
+
+        val id = noteId?.trim()
+        if (id.isNullOrBlank()) {
+            viewModel.showNotFound("null")
+            return@LaunchedEffect
+        }
+
+        val selected = notes.firstOrNull { it.id == id }
+
+        when {
+            selected != null -> viewModel.onNoteUpdated(selected)
+
+            listUiState is NotesUiState.Error -> {
+                // If list stream failed, there is no reliable way to resolve the note from SSOT.
+                viewModel.showNotFound(id)
+            }
+
+            else -> {
+                // Still waiting list stream to deliver items.
+                viewModel.setLoading()
+            }
+        }
+    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     NoteDetailScreen(
         uiState = uiState,
@@ -45,7 +77,7 @@ fun NoteDetailRoute(
         onTitleChange = { viewModel.onEvent(NoteDetailEvent.TitleChanged(it)) },
         onContentChange = { viewModel.onEvent(NoteDetailEvent.ContentChanged(it)) },
         onCategorySelected = { viewModel.onEvent(NoteDetailEvent.CategoryChanged(it)) },
-        onSaveClick = { viewModel.save() }
+        onSaveClick = { viewModel.save(onCreated = onCreated) }
     )
 }
 

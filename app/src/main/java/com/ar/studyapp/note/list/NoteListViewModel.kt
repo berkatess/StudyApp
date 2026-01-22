@@ -34,7 +34,11 @@ data class NoteListItemUiModel(
 
 sealed interface NotesUiState {
     object Loading : NotesUiState
-    data class Success(val notes: List<NoteListItemUiModel>) : NotesUiState
+    data class Success(
+        val notes: List<NoteListItemUiModel>,
+        val categories: List<Category>,
+        val selectedCategoryId: String?
+    ) : NotesUiState
     data class Error(val message: String) : NotesUiState
 }
 
@@ -67,6 +71,14 @@ class NoteListViewModel @Inject constructor(
 
     private val userPreferredStrategy = MutableStateFlow(FetchStrategy.FAST)
 
+    // Holds currently selected category id
+    private val selectedCategoryId = MutableStateFlow<String?>(null)
+
+    // Called when a category chip is selected from UI
+    fun onCategorySelected(categoryId: String?) {
+        val current = selectedCategoryId.value
+        selectedCategoryId.value = if (current == categoryId) null else categoryId
+    }
 
     private val isOnline: StateFlow<Boolean> =
         networkMonitor.isOnline
@@ -118,9 +130,9 @@ class NoteListViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            combine(notesFlow, categoriesFlow) { notesResult, categoriesResult ->
-                notesResult to categoriesResult
-            }.collectLatest { (notesResult, categoriesResult) ->
+            combine(notesFlow, categoriesFlow, selectedCategoryId) { notesResult, categoriesResult, selectedCategoryId ->
+                Triple(notesResult, categoriesResult, selectedCategoryId)
+            }.collectLatest { (notesResult, categoriesResult, selectedCategoryId) ->
 
                 if (notesResult is Result.Loading || categoriesResult is Result.Loading) {
                     _uiState.value = NotesUiState.Loading
@@ -151,7 +163,13 @@ class NoteListViewModel @Inject constructor(
 
                     _categories.value = categories
 
-                    val uiItems = notes.map { note ->
+                    val filteredNotes = if (selectedCategoryId == null) {
+                        notes
+                    } else {
+                        notes.filter { it.categoryId == selectedCategoryId }
+                    }
+
+                    val uiItems = filteredNotes.map { note ->
                         val category = note.categoryId?.let { categoriesById[it] }
                         NoteListItemUiModel(
                             id = note.id,
@@ -162,7 +180,12 @@ class NoteListViewModel @Inject constructor(
                         )
                     }
 
-                    _uiState.value = NotesUiState.Success(uiItems)
+                    _uiState.value = NotesUiState.Success(
+                        notes = uiItems,
+                        categories = categories,
+                        selectedCategoryId = selectedCategoryId
+                    )
+
                 }
             }
         }

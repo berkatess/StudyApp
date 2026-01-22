@@ -11,11 +11,8 @@ class CreateNoteUseCase @Inject constructor(
 ) : BaseUseCase<Note, Note>() {
 
     override suspend fun execute(params: Note): Result<Note> {
-        if (params.title.isBlank()) {
-            return Result.Error("Title cannot be empty")
-        }
-        if (params.content.isBlank()) {
-            return Result.Error("Content cannot be empty")
+        if (params.title.isBlank() && params.content.isBlank()) {
+            return Result.Error("Title and content cannot be empty")
         }
 
         return repository.createNote(params)

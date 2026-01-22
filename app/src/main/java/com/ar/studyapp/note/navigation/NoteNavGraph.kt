@@ -16,7 +16,6 @@ import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.ar.studyapp.category.CategoryManagementRoute
 import com.ar.studyapp.note.detail.NoteDetailRoute
-import com.ar.studyapp.note.edit.NoteEditRoute
 import com.ar.studyapp.note.list.NoteListRoute
 import com.ar.studyapp.note.list.NoteListViewModel
 
@@ -126,29 +125,6 @@ fun NoteNavGraph(
                             launchSingleTop = true
                         }
                     }
-                )
-            }
-
-            /**
-             * NoteEdit destination (optional noteId).
-             * Kept to avoid breaking existing navigation paths.
-             */
-            composable(
-                route = "${NoteDestinations.NOTE_EDIT}?${NoteDestinations.ARG_NOTE_ID}={${NoteDestinations.ARG_NOTE_ID}}",
-                arguments = listOf(
-                    navArgument(NoteDestinations.ARG_NOTE_ID) {
-                        type = NavType.StringType
-                        defaultValue = ""
-                        nullable = true
-                    }
-                )
-            ) { backStackEntry ->
-                val rawId = backStackEntry.arguments?.getString(NoteDestinations.ARG_NOTE_ID)
-                val noteId = rawId?.takeIf { it.isNotBlank() }
-
-                NoteEditRoute(
-                    noteId = noteId,
-                    onBackClick = { navController.navigateUp() }
                 )
             }
         }

@@ -1,6 +1,7 @@
 package com.ar.studyapp.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.core.graphics.toColorInt
 
 /**
  * Kullanıcının kategori oluştururken seçebileceği hazır renkler.
@@ -44,3 +45,10 @@ fun Color.toHexString(): String {
     )
     return String.format("#%06X", 0xFFFFFF and intColor)
 }
+
+fun String?.toComposeColor(
+    default: Color = Color.White
+): Color =
+    runCatching {
+        Color((this ?: "#FFFFFF").toColorInt())
+    }.getOrElse { default }

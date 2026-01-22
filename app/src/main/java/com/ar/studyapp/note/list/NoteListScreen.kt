@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ar.studyapp.anim.SwipeRevealItem
+import com.ar.studyapp.category.component.CategoryBanner
 import com.ar.studyapp.dialog.ConfirmDeleteDialog
 
 /**
@@ -49,7 +50,8 @@ fun NoteListRoute(
         onNoteClick = onNoteClick,
         onAddNoteClick = onAddNoteClick,
         onManageCategoriesClick = onManageCategoriesClick,
-        onDeleteNote = viewModel::deleteNote
+        onDeleteNote = viewModel::deleteNote,
+        onCategorySelected = viewModel::onCategorySelected
     )
 }
 
@@ -66,7 +68,8 @@ fun NoteListScreen(
     onNoteClick: (String) -> Unit,
     onAddNoteClick: () -> Unit,
     onManageCategoriesClick: () -> Unit,
-    onDeleteNote: (String) -> Unit
+    onDeleteNote: (String) -> Unit,
+    onCategorySelected: (String?) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -113,20 +116,35 @@ fun NoteListScreen(
                 }
 
                 is NotesUiState.Success -> {
-                    if (uiState.notes.isEmpty()) {
-                        Text(
-                            text = "No notes yet",
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    } else {
 
-                        var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+                    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
 
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // NOTE: The banner must always be visible even if filtered list is empty.
+                        item {
+                            CategoryBanner(
+                                categories = uiState.categories,
+                                selectedCategoryId = uiState.selectedCategoryId,
+                                onCategorySelected = onCategorySelected
+                            )
+                        }
+
+                        if (uiState.notes.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = "No notes yet")
+                                }
+                            }
+                        } else {
                             items(
                                 items = uiState.notes,
                                 key = { it.id }
@@ -142,16 +160,16 @@ fun NoteListScreen(
                                 }
                             }
                         }
+                    }
 
-                        if (pendingDeleteId != null) {
-                            ConfirmDeleteDialog(
-                                onConfirm = {
-                                    onDeleteNote(pendingDeleteId!!)
-                                    pendingDeleteId = null
-                                },
-                                onDismiss = { pendingDeleteId = null }
-                            )
-                        }
+                    if (pendingDeleteId != null) {
+                        ConfirmDeleteDialog(
+                            onConfirm = {
+                                onDeleteNote(pendingDeleteId!!)
+                                pendingDeleteId = null
+                            },
+                            onDismiss = { pendingDeleteId = null }
+                        )
                     }
                 }
             }

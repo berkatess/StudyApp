@@ -12,8 +12,8 @@ class UpdateNoteUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(note: Note): Result<Note> {
         if (note.id.isBlank()) return Result.Error("Note id cannot be empty")
-        if (note.title.isBlank()) return Result.Error("Title cannot be empty")
-        if (note.content.isBlank()) return Result.Error("Content cannot be empty")
+        if ( note.title.isBlank() && note.content.isBlank())
+            return Result.Error("Title and content cannot be empty")
         return repository.updateNote(note)
     }
 }

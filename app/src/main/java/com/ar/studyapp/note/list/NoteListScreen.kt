@@ -4,9 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,11 +19,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -51,7 +61,9 @@ fun NoteListRoute(
         onAddNoteClick = onAddNoteClick,
         onManageCategoriesClick = onManageCategoriesClick,
         onDeleteNote = viewModel::deleteNote,
-        onCategorySelected = viewModel::onCategorySelected
+        onCategorySelected = viewModel::onCategorySelected,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
+        onClearSearch = viewModel::clearSearch
     )
 }
 
@@ -69,18 +81,109 @@ fun NoteListScreen(
     onAddNoteClick: () -> Unit,
     onManageCategoriesClick: () -> Unit,
     onDeleteNote: (String) -> Unit,
-    onCategorySelected: (String?) -> Unit
+    onCategorySelected: (String?) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit
 ) {
+    // UI-only state: controls whether search input is visible in the TopAppBar.
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    // Read query from uiState (SSOT lives in ViewModel).
+    val query = (uiState as? NotesUiState.Success)?.searchQuery.orEmpty()
+
+    // Keep the search UI open if there is already a query (e.g., after rotation).
+    LaunchedEffect(query) {
+        if (query.isNotBlank()) {
+            searchActive = true
+        }
+    }
+
+    // Request focus automatically when search becomes active (brings up the keyboard).
+    LaunchedEffect(searchActive) {
+        if (searchActive) {
+            focusRequester.requestFocus()
+        }
+    }
+
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notes") },
-                actions = {
-                    IconButton(onClick = onManageCategoriesClick) {
-                        Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = "Manage categories"
+                navigationIcon = {
+                    if (searchActive) {
+                        IconButton(
+                            onClick = {
+                                // Close search, clear focus and reset query.
+                                searchActive = false
+                                focusManager.clearFocus(force = true)
+                                onClearSearch()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Close search"
+                            )
+                        }
+                    }
+                },
+                title = {
+                    if (searchActive) {
+                        TextField(
+                            value = query,
+                            onValueChange = onSearchQueryChange,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(end = 16.dp)
+                                .focusRequester(focusRequester),
+                                singleLine = true,
+                            placeholder = { Text("Search notes") },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(
+                                onSearch = { focusManager.clearFocus() }
+                            ),
+                            trailingIcon = {
+                                if (query.isNotBlank()) {
+                                    IconButton(
+                                        onClick = onClearSearch
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Clear search"
+                                        )
+                                    }
+                                }
+                            },
+                            // Make it feel like an inline search field (no filled box background).
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                disabledIndicatorColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent
+                            )
                         )
+                    } else {
+                        Text("Notes")
+                    }
+                },
+                actions = {
+                    if (!searchActive) {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search"
+                            )
+                        }
+
+                        IconButton(onClick = onManageCategoriesClick) {
+                            Icon(
+                                imageVector = Icons.Default.List,
+                                contentDescription = "Manage categories"
+                            )
+                        }
                     }
                 }
             )

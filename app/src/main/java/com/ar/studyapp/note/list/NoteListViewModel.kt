@@ -37,10 +37,18 @@ sealed interface NotesUiState {
     data class Success(
         val notes: List<NoteListItemUiModel>,
         val categories: List<Category>,
-        val selectedCategoryId: String?
+        val selectedCategoryId: String?,
+        val searchQuery: String
     ) : NotesUiState
     data class Error(val message: String) : NotesUiState
 }
+
+private data class CombinedState(
+    val notesResult: Result<List<Note>>,
+    val categoriesResult: Result<List<Category>>,
+    val selectedCategoryId: String?,
+    val query: String
+)
 
 @HiltViewModel
 class NoteListViewModel @Inject constructor(
@@ -70,6 +78,19 @@ class NoteListViewModel @Inject constructor(
     val uiState: StateFlow<NotesUiState> = _uiState
 
     private val userPreferredStrategy = MutableStateFlow(FetchStrategy.FAST)
+
+    // Holds the search query for notes list
+    private val searchQuery = MutableStateFlow("")
+
+    // Called when user types into search field
+    fun onSearchQueryChange(query: String) {
+        searchQuery.value = query
+    }
+
+    // Called when user closes search
+    fun clearSearch() {
+        searchQuery.value = ""
+    }
 
     // Holds currently selected category id
     private val selectedCategoryId = MutableStateFlow<String?>(null)
@@ -130,46 +151,70 @@ class NoteListViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            combine(notesFlow, categoriesFlow, selectedCategoryId) { notesResult, categoriesResult, selectedCategoryId ->
-                Triple(notesResult, categoriesResult, selectedCategoryId)
-            }.collectLatest { (notesResult, categoriesResult, selectedCategoryId) ->
+            // Combine all UI-affecting inputs in one place to keep SSOT behavior.
+            combine(
+                notesFlow,
+                categoriesFlow,
+                selectedCategoryId,
+                searchQuery
+            ) { notesResult, categoriesResult, selectedCategoryId, query ->
+                CombinedState(
+                    notesResult = notesResult,
+                    categoriesResult = categoriesResult,
+                    selectedCategoryId = selectedCategoryId,
+                    query = query
+                )
+            }.collectLatest { state ->
 
-                if (notesResult is Result.Loading || categoriesResult is Result.Loading) {
+                if (state.notesResult is Result.Loading || state.categoriesResult is Result.Loading) {
                     _uiState.value = NotesUiState.Loading
                     return@collectLatest
                 }
 
-                if (notesResult is Result.Error) {
+                if (state.notesResult is Result.Error) {
                     _uiState.value = NotesUiState.Error(
-                        notesResult.message ?: "Failed to load notes"
+                        state.notesResult.message ?: "Failed to load notes"
                     )
                     return@collectLatest
                 }
 
-                if (categoriesResult is Result.Error) {
+                if (state.categoriesResult is Result.Error) {
                     _uiState.value = NotesUiState.Error(
-                        categoriesResult.message ?: "Failed to load categories"
+                        state.categoriesResult.message ?: "Failed to load categories"
                     )
                     return@collectLatest
                 }
 
-                if (notesResult is Result.Success && categoriesResult is Result.Success) {
-                    val notes: List<Note> = notesResult.data
-                    val categories: List<Category> = categoriesResult.data
+                if (state.notesResult is Result.Success && state.categoriesResult is Result.Success) {
+                    val notes: List<Note> = state.notesResult.data
+                    val categories: List<Category> = state.categoriesResult.data
                     val categoriesById = categories.associateBy { it.id }
 
                     // Update SSOT list for consumers like Detail.
                     _notes.value = notes
-
                     _categories.value = categories
 
-                    val filteredNotes = if (selectedCategoryId == null) {
+                    // 1) Category filtering
+                    val categoryFiltered = if (state.selectedCategoryId == null) {
                         notes
                     } else {
-                        notes.filter { it.categoryId == selectedCategoryId }
+                        notes.filter { it.categoryId == state.selectedCategoryId }
                     }
 
-                    val uiItems = filteredNotes.map { note ->
+                    // 2) Query filtering (title + content)
+                    // Note: Filtering in ViewModel keeps UI dumb and testable.
+                    val q = state.query.trim()
+                    val fullyFiltered = if (q.isBlank()) {
+                        categoryFiltered
+                    } else {
+                        val needle = q.lowercase()
+                        categoryFiltered.filter { note ->
+                            note.title.lowercase().contains(needle) ||
+                                    note.content.lowercase().contains(needle)
+                        }
+                    }
+
+                    val uiItems = fullyFiltered.map { note ->
                         val category = note.categoryId?.let { categoriesById[it] }
                         NoteListItemUiModel(
                             id = note.id,
@@ -183,9 +228,9 @@ class NoteListViewModel @Inject constructor(
                     _uiState.value = NotesUiState.Success(
                         notes = uiItems,
                         categories = categories,
-                        selectedCategoryId = selectedCategoryId
+                        selectedCategoryId = state.selectedCategoryId,
+                        searchQuery = state.query
                     )
-
                 }
             }
         }

@@ -169,12 +169,12 @@
                                     contentDescription = "Search"
                                 )
                             }
-                            IconButton(onClick = onManageCategoriesClick) {
-                                Icon(
-                                    imageVector = Icons.Default.List,
-                                    contentDescription = "Manage categories"
-                                )
-                            }
+//                            IconButton(onClick = onManageCategoriesClick) {
+//                                Icon(
+//                                    imageVector = Icons.Default.List,
+//                                    contentDescription = "Manage categories"
+//                                )
+//                            }
                         } else {
                             if (query.isNotBlank()) {
                                 IconButton(

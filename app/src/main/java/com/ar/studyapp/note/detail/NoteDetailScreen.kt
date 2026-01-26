@@ -95,10 +95,7 @@ fun NoteDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-
-
-                },
+                title = {},
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(

@@ -53,7 +53,7 @@ class CategoryManagementViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val observeCategoriesUseCase: ObserveCategoriesUseCase,
     private val createCategoryUseCase: CreateCategoryUseCase,
-    private val deleteCategoryUseCase: DeleteCategoryUseCase,
+//    private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val updateCategoryUseCase: UpdateCategoryUseCase,
     private val networkMonitor: NetworkMonitor,
     private val refreshCategoriesUseCase: RefreshCategoriesUseCase,
@@ -148,16 +148,16 @@ class CategoryManagementViewModel @Inject constructor(
         )
     }
 
-    fun deleteCategory(categoryId: String) {
-        viewModelScope.launch {
-            val result = deleteCategoryUseCase(categoryId)
-            if (result is Result.Error) {
-                _formState.value = _formState.value.copy(
-                    errorMessage = result.message ?: "Failed to delete category"
-                )
-            }
-        }
-    }
+//    fun deleteCategory(categoryId: String) {
+//        viewModelScope.launch {
+//            val result = deleteCategoryUseCase(categoryId)
+//            if (result is Result.Error) {
+//                _formState.value = _formState.value.copy(
+//                    errorMessage = result.message ?: "Failed to delete category"
+//                )
+//            }
+//        }
+//    }
 
     fun onEditCategory(category: Category) {
         _formState.value = CategoryFormState(

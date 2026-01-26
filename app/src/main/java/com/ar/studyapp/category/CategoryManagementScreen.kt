@@ -9,8 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,11 +17,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ar.domain.category.model.Category
 import com.ar.studyapp.theme.CategoryColors
 import com.ar.studyapp.theme.toHexString
-import androidx.core.graphics.toColorInt
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
@@ -49,10 +47,6 @@ fun CategoryManagementRoute(
         onImageUrlChange = viewModel::onImageUrlChange,
         onColorSelectedHex = viewModel::onColorSelected,
         onSubmitCategory = viewModel::onSubmitCategory,
-
-        // ✅ EK: liste aksiyonları
-        onEditCategory = viewModel::onEditCategory,
-        onDeleteCategory = viewModel::deleteCategory,
         onCancelEdit = viewModel::onCancelEdit
     )
 }
@@ -73,16 +67,12 @@ fun CategoryManagementScreen(
     onImageUrlChange: (String) -> Unit,
     onColorSelectedHex: (String) -> Unit,
     onSubmitCategory: () -> Unit,
-
-    // ✅ EK
-    onEditCategory: (Category) -> Unit,
-    onDeleteCategory: (String) -> Unit,
     onCancelEdit: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Categories") },
+                title = { Text("Categories") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -101,7 +91,6 @@ fun CategoryManagementScreen(
                 .padding(16.dp)
         ) {
 
-            // 🔹 FORM BÖLÜMÜ
             Text(
                 text = if (formState.editingCategoryId.isNullOrBlank()) "Create new category" else "Edit category",
                 style = MaterialTheme.typography.titleMedium
@@ -223,9 +212,7 @@ fun CategoryManagementScreen(
                         ) {
                             items(uiState.categories, key = { it.id }) { category ->
                                 CategoryListItem(
-                                    category = category,
-                                    onEdit = { onEditCategory(category) },
-                                    onDelete = { onDeleteCategory(category.id) }
+                                    category = category
                                 )
                             }
                         }
@@ -235,7 +222,6 @@ fun CategoryManagementScreen(
         }
     }
 }
-
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -276,19 +262,9 @@ fun ColorPickerRow(
     }
 }
 
-/**
- * Kategori satırı:
- * - Sol tarafta kategori rengi yuvarlak
- * - Ortada ad + imageUrl
- * - Sağda edit + delete iconu
- *
- * ✅ Satır tıklanınca edit yok (edit sadece icon)
- */
 @Composable
 fun CategoryListItem(
-    category: Category,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+    category: Category
 ) {
     val color = category.colorHex?.let {
         try {
@@ -319,7 +295,7 @@ fun CategoryListItem(
         Spacer(modifier = Modifier.width(8.dp))
 
         Column(
-            modifier = Modifier.weight(2f)
+            modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = category.name,
@@ -336,25 +312,6 @@ fun CategoryListItem(
 //                    overflow = TextOverflow.Ellipsis
 //                )
 //            }
-        }
-
-        IconButton(
-            onClick = onEdit,
-            modifier = Modifier.size(36.dp)) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Edit category"
-            )
-        }
-
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(36.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Delete category",
-            )
         }
     }
 }

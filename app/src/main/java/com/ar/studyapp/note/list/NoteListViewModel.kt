@@ -7,6 +7,7 @@ import com.ar.core.network.NetworkMonitor
 import com.ar.core.result.Result
 import com.ar.domain.category.model.Category
 import com.ar.domain.category.usecase.ObserveCategoriesUseCase
+import com.ar.domain.category.usecase.DeleteCategoryUseCase
 import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
 import com.ar.domain.note.usecase.DeleteNoteUseCase
@@ -54,6 +55,7 @@ private data class CombinedState(
 class NoteListViewModel @Inject constructor(
     private val getNotesUseCase: GetNotesUseCase,
     private val observeCategoriesUseCase: ObserveCategoriesUseCase,
+    private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
     private val noteRepository: NoteRepository,
     private val networkMonitor: NetworkMonitor
@@ -130,6 +132,18 @@ class NoteListViewModel @Inject constructor(
                         getNotesUseCase(FetchStrategy.SYNCED).first()
                     }
                 }
+        }
+    }
+
+    fun deleteCategory(categoryId: String) {
+        viewModelScope.launch {
+            val result = deleteCategoryUseCase(categoryId)
+            if (result is Result.Success) {
+                // If the user deleted the currently selected category, clear the filter.
+                if (selectedCategoryId.value == categoryId) {
+                    selectedCategoryId.value = null
+                }
+            }
         }
     }
 
@@ -214,19 +228,19 @@ class NoteListViewModel @Inject constructor(
                         }
                     }
 
-                    val uiItems = fullyFiltered.map { note ->
-                        val category = note.categoryId?.let { categoriesById[it] }
+                    val uiModels = fullyFiltered.map { note ->
+                        val cat = note.categoryId?.let { categoriesById[it] }
                         NoteListItemUiModel(
                             id = note.id,
                             title = note.title,
-                            contentPreview = note.content.take(80),
-                            categoryName = category?.name,
-                            categoryColorHex = category?.colorHex
+                            contentPreview = note.content.take(120),
+                            categoryName = cat?.name,
+                            categoryColorHex = cat?.colorHex
                         )
                     }
 
                     _uiState.value = NotesUiState.Success(
-                        notes = uiItems,
+                        notes = uiModels,
                         categories = categories,
                         selectedCategoryId = state.selectedCategoryId,
                         searchQuery = state.query
@@ -239,14 +253,6 @@ class NoteListViewModel @Inject constructor(
     fun deleteNote(noteId: String) {
         viewModelScope.launch {
             deleteNoteUseCase(noteId)
-        }
-    }
-
-    fun refresh() {
-        viewModelScope.launch {
-            if (networkMonitor.isOnlineNow()) {
-                getNotesUseCase(FetchStrategy.SYNCED).first()
-            }
         }
     }
 }

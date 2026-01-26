@@ -29,6 +29,7 @@ object NoteDestinations {
 
     const val ARG_NOTE_ID = "noteId"
     const val ARG_MODE = "mode"
+    const val ARG_CATEGORY_ID = "categoryId"
 
     const val MODE_CREATE = "create"
     const val MODE_EDIT = "edit"
@@ -45,6 +46,15 @@ private fun noteDetailRoute(mode: String, noteId: String?): String {
     val safeMode = Uri.encode(mode)
     val safeId = Uri.encode(noteId.orEmpty())
     return "${NoteDestinations.NOTE_DETAIL}?${NoteDestinations.ARG_MODE}=$safeMode&${NoteDestinations.ARG_NOTE_ID}=$safeId"
+}
+
+private fun categoryManagementRoute(categoryId: String?): String {
+    val safeId = Uri.encode(categoryId.orEmpty())
+    return if (categoryId.isNullOrBlank()) {
+        NoteDestinations.CATEGORY_MANAGEMENT
+    } else {
+        "${NoteDestinations.CATEGORY_MANAGEMENT}?${NoteDestinations.ARG_CATEGORY_ID}=$safeId"
+    }
 }
 
 @Composable
@@ -72,12 +82,24 @@ fun NoteNavGraph(
                         navController.navigate(noteDetailRoute(NoteDestinations.MODE_CREATE, null))
                     },
                     onManageCategoriesClick = {
-                        navController.navigate(NoteDestinations.CATEGORY_MANAGEMENT)
+                        navController.navigate(categoryManagementRoute(null))
+                    },
+                    onEditCategoryClick = { categoryId ->
+                        navController.navigate(categoryManagementRoute(categoryId))
                     }
                 )
             }
 
-            composable(route = NoteDestinations.CATEGORY_MANAGEMENT) {
+            composable(
+                route = "${NoteDestinations.CATEGORY_MANAGEMENT}?${NoteDestinations.ARG_CATEGORY_ID}={${NoteDestinations.ARG_CATEGORY_ID}}",
+                arguments = listOf(
+                    navArgument(NoteDestinations.ARG_CATEGORY_ID) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = true
+                    }
+                )
+            ) {
                 CategoryManagementRoute(
                     onBackClick = { navController.navigateUp() }
                 )
@@ -119,10 +141,8 @@ fun NoteNavGraph(
                     onCreated = { createdId ->
                         // After creation, switch the screen into edit mode with the real id.
                         // This keeps back stack clean and makes the route represent the persisted entity.
-                        val createRoute = noteDetailRoute(NoteDestinations.MODE_CREATE, null)
                         navController.navigate(noteDetailRoute(NoteDestinations.MODE_EDIT, createdId)) {
-                            popUpTo(createRoute) { inclusive = true }
-                            launchSingleTop = true
+                            popUpTo(noteDetailRoute(NoteDestinations.MODE_CREATE, null)) { inclusive = true }
                         }
                     }
                 )

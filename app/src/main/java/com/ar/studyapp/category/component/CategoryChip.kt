@@ -1,7 +1,8 @@
 package com.ar.studyapp.note.list.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,11 +18,14 @@ import com.ar.domain.category.model.Category
 import androidx.core.graphics.toColorInt
 import com.ar.studyapp.theme.toComposeColor
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CategoryChip(
     category: Category,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null
 ) {
     val baseColor = category.colorHex?.let { hex ->
         try {
@@ -31,16 +35,13 @@ fun CategoryChip(
         }
     } ?: MaterialTheme.colorScheme.secondary
 
-    val backgroundColor =
-        if (isSelected) baseColor else baseColor.copy(alpha = 0.4f)
-
     val interactionSource = remember { MutableInteractionSource() }
 
     Surface(
         color = Color.Transparent,
         shape = RoundedCornerShape(16.dp),
         tonalElevation = if (isSelected) 4.dp else 0.dp,
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 4.dp)
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
@@ -48,10 +49,12 @@ fun CategoryChip(
                 else category.colorHex.toComposeColor(),
                 shape = RoundedCornerShape(16.dp)
             )
-            .clickable(
+            // Use combinedClickable so callers can optionally provide a long-press action (e.g., overflow menu).
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             )
     ) {
         Text(

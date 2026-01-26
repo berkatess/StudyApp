@@ -1,6 +1,7 @@
 package com.ar.studyapp.category
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.ar.core.data.FetchStrategy
 import com.ar.core.network.NetworkMonitor
@@ -12,6 +13,7 @@ import com.ar.domain.category.usecase.ObserveCategoriesUseCase
 import com.ar.domain.category.usecase.RefreshCategoriesUseCase
 import com.ar.domain.category.usecase.UpdateCategoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.ar.studyapp.note.navigation.NoteDestinations
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +50,7 @@ data class CategoryFormState(
 
 @HiltViewModel
 class CategoryManagementViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val observeCategoriesUseCase: ObserveCategoriesUseCase,
     private val createCategoryUseCase: CreateCategoryUseCase,
     private val deleteCategoryUseCase: DeleteCategoryUseCase,
@@ -78,6 +81,12 @@ class CategoryManagementViewModel @Inject constructor(
             if (!online) FetchStrategy.CACHED else preferred
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FetchStrategy.FAST)
 
+    private val pendingEditCategoryId: String? =
+        savedStateHandle.get<String>(NoteDestinations.ARG_CATEGORY_ID)
+            ?.takeIf { it.isNotBlank() }
+
+    private var didHandleInitialEdit: Boolean = false
+
     init {
         observeCategories()
         refreshOnScreenOpen()
@@ -90,7 +99,16 @@ class CategoryManagementViewModel @Inject constructor(
                 .collectLatest { result ->
                     _uiState.value = when (result) {
                         is Result.Loading -> CategoryUiState.Loading
-                        is Result.Success -> CategoryUiState.Success(result.data)
+                        is Result.Success -> {
+                            // If we navigated here with a categoryId, auto-enter edit mode once.
+                            if (!didHandleInitialEdit && pendingEditCategoryId != null) {
+                                result.data.firstOrNull { it.id == pendingEditCategoryId }?.let { category ->
+                                    onEditCategory(category)
+                                }
+                                didHandleInitialEdit = true
+                            }
+                            CategoryUiState.Success(result.data)
+                        }
                         is Result.Error -> CategoryUiState.Error(result.message ?: "Unknown error")
                     }
                 }

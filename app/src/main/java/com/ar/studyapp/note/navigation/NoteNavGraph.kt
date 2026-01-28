@@ -18,6 +18,7 @@ import com.ar.studyapp.category.CategoryManagementRoute
 import com.ar.studyapp.note.detail.NoteDetailRoute
 import com.ar.studyapp.note.list.NoteListRoute
 import com.ar.studyapp.note.list.NoteListViewModel
+import com.ar.studyapp.settings.SettingsRoute
 
 object NoteDestinations {
     const val NOTE_GRAPH = "note_graph"
@@ -26,6 +27,7 @@ object NoteDestinations {
     const val NOTE_DETAIL = "note_detail"
     const val NOTE_EDIT = "note_edit"
     const val CATEGORY_MANAGEMENT = "category_management"
+    const val SETTINGS = "settings"
 
     const val ARG_NOTE_ID = "noteId"
     const val ARG_MODE = "mode"
@@ -86,9 +88,16 @@ fun NoteNavGraph(
                     },
                     onEditCategoryClick = { categoryId ->
                         navController.navigate(categoryManagementRoute(categoryId))
+                    },
+                    onSettingsClick = { navController.navigate(NoteDestinations.SETTINGS)
                     }
                 )
             }
+
+            composable(route = NoteDestinations.SETTINGS) {
+                SettingsRoute(onBackClick = { navController.navigateUp() })
+            }
+
 
             composable(
                 route = "${NoteDestinations.CATEGORY_MANAGEMENT}?${NoteDestinations.ARG_CATEGORY_ID}={${NoteDestinations.ARG_CATEGORY_ID}}",

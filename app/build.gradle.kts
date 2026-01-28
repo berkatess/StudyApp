@@ -71,9 +71,19 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation (libs.accompanist.flowlayout)
 
+    implementation(libs.androidx.material.icons.extended)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore.ktx)
+
+    // Credential Manager
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+
+    // Google Identity Services
+    implementation(libs.googleid
+    )
 
 
     // Modüles

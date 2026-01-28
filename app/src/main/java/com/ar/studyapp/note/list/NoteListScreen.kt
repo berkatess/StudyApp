@@ -12,6 +12,7 @@
     import androidx.compose.material.icons.filled.Close
     import androidx.compose.material.icons.filled.List
     import androidx.compose.material.icons.filled.Search
+    import androidx.compose.material.icons.filled.Settings
     import androidx.compose.material3.*
     import androidx.compose.runtime.Composable
     import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +49,7 @@
         onAddNoteClick: () -> Unit,
         onManageCategoriesClick: () -> Unit,
         onEditCategoryClick: (String) -> Unit,
+        onSettingsClick: () -> Unit,
         viewModel: NoteListViewModel = hiltViewModel()
     ) {
         val uiState by viewModel.uiState.collectAsState()
@@ -60,6 +62,7 @@
             uiState = uiState,
             onNoteClick = onNoteClick,
             onAddNoteClick = onAddNoteClick,
+            onSettingsClick = onSettingsClick,
             onManageCategoriesClick = onManageCategoriesClick,
             onDeleteNote = viewModel::deleteNote,
             onDeleteCategory = viewModel::deleteCategory,
@@ -82,6 +85,7 @@
         uiState: NotesUiState,
         onNoteClick: (String) -> Unit,
         onAddNoteClick: () -> Unit,
+        onSettingsClick: () -> Unit,
         onManageCategoriesClick: () -> Unit,
         onEditCategoryClick: (String) -> Unit,
         onDeleteNote: (String) -> Unit,
@@ -169,12 +173,12 @@
                                     contentDescription = "Search"
                                 )
                             }
-//                            IconButton(onClick = onManageCategoriesClick) {
-//                                Icon(
-//                                    imageVector = Icons.Default.List,
-//                                    contentDescription = "Manage categories"
-//                                )
-//                            }
+                            IconButton(onClick = onSettingsClick) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings"
+                                )
+                            }
                         } else {
                             if (query.isNotBlank()) {
                                 IconButton(

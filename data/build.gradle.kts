@@ -56,6 +56,10 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     kapt(libs.androidx.hilt.compiler)
 
+    //DataStore
+    implementation(libs.androidx.datastore.preferences)
+
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

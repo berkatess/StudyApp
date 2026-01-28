@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.ar.domain.settings.model.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 import com.ar.studyapp.note.navigation.NoteNavGraph
 import com.ar.studyapp.ui.theme.Theme
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
             // If you have a custom Compose theme (e.g. StudyAppTheme), use it here.
             // For now, this is wrapped with Theme,
             // you can replace it with your own theme implementation.
-            Theme {
+            Theme(themeMode = ThemeMode.SYSTEM) {
                 Surface(
                     color = MaterialTheme.colorScheme.background
                 ) {

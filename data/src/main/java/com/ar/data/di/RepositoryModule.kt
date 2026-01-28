@@ -6,6 +6,8 @@ import com.ar.data.note.repository.NoteRepositoryImpl
 import com.ar.data.category.repository.CategoryRepositoryImpl
 import com.ar.domain.auth.repository.AuthRepository
 import com.ar.data.auth.AuthRepositoryImpl
+import com.ar.data.auth.GoogleAuthRepositoryImpl
+import com.ar.domain.auth.repository.GoogleAuthRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,5 +35,11 @@ abstract class RepositoryModule {
     abstract fun bindAuthRepository(
         impl: AuthRepositoryImpl
     ): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGoogleAuthRepository(
+        impl: GoogleAuthRepositoryImpl
+    ): GoogleAuthRepository
 
 }

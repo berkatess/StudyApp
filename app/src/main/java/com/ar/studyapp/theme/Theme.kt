@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.ar.domain.settings.model.ThemeMode
 
 /**
  * ----------------------------------------------------
@@ -58,11 +59,15 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode,
     content: @Composable () -> Unit
 ) {
-    // Light / Dark seçimi
-    val colorScheme = if (darkTheme) DarkColors else LightColors
+    val isDark = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+    }
+    val colorScheme = if (isDark) DarkColors else LightColors
 
     MaterialTheme(
         colorScheme = colorScheme,
@@ -71,3 +76,4 @@ fun Theme(
         content = content
     )
 }
+

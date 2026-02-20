@@ -1,9 +1,9 @@
 package com.ar.data.note.remote
 
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,10 +13,15 @@ class NoteRemoteDataSource @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
 
-    private val notesCollection get() = firestore.collection("notes")
+    /**
+     * Notes are stored under the authenticated user's document.
+     * This prevents cross-user access and keeps data isolated per UID.
+     */
+    private fun notesCollection(uid: String) =
+        firestore.collection("users").document(uid).collection("notes")
 
-    fun getNotes(): Flow<List<Pair<String, NoteRemoteDto>>> = callbackFlow {
-        val registration = notesCollection.addSnapshotListener { snapshot, error ->
+    fun getNotes(uid: String): Flow<List<Pair<String, NoteRemoteDto>>> = callbackFlow {
+        val registration = notesCollection(uid).addSnapshotListener { snapshot, error ->
             if (error != null) {
                 close(error)
                 return@addSnapshotListener
@@ -33,8 +38,8 @@ class NoteRemoteDataSource @Inject constructor(
         awaitClose { registration.remove() }
     }
 
-    fun observeNoteById(id: String): Flow<Pair<String, NoteRemoteDto>?> = callbackFlow {
-        val docRef = notesCollection.document(id)
+    fun observeNoteById(uid: String, id: String): Flow<Pair<String, NoteRemoteDto>?> = callbackFlow {
+        val docRef = notesCollection(uid).document(id)
 
         val registration = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -57,8 +62,8 @@ class NoteRemoteDataSource @Inject constructor(
         awaitClose { registration.remove() }
     }
 
-    suspend fun getNotesByCategory(categoryId: String): List<Pair<String, NoteRemoteDto>> {
-        val snapshot = notesCollection
+    suspend fun getNotesByCategory(uid: String, categoryId: String): List<Pair<String, NoteRemoteDto>> {
+        val snapshot = notesCollection(uid)
             .whereEqualTo("categoryId", categoryId)
             .get()
             .await()
@@ -70,9 +75,10 @@ class NoteRemoteDataSource @Inject constructor(
     }
 
     suspend fun fetchNotesByCategoryOnce(
+        uid: String,
         categoryId: String
     ): List<Pair<String, NoteRemoteDto>> {
-        val snapshot = notesCollection
+        val snapshot = notesCollection(uid)
             .whereEqualTo("categoryId", categoryId)
             .get()
             .await()
@@ -83,9 +89,11 @@ class NoteRemoteDataSource @Inject constructor(
         }
     }
 
-
-    fun observeNotesByCategory(categoryId: String): Flow<List<Pair<String, NoteRemoteDto>>> = callbackFlow {
-        val registration = notesCollection
+    fun observeNotesByCategory(
+        uid: String,
+        categoryId: String
+    ): Flow<List<Pair<String, NoteRemoteDto>>> = callbackFlow {
+        val registration = notesCollection(uid)
             .whereEqualTo("categoryId", categoryId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -104,34 +112,32 @@ class NoteRemoteDataSource @Inject constructor(
         awaitClose { registration.remove() }
     }
 
-
-    suspend fun getNoteById(id: String): Pair<String, NoteRemoteDto>? {
-        val doc = notesCollection.document(id).get().await()
+    suspend fun getNoteById(uid: String, id: String): Pair<String, NoteRemoteDto>? {
+        val doc = notesCollection(uid).document(id).get().await()
         val dto = doc.toObject(NoteRemoteDto::class.java) ?: return null
         return doc.id to dto
     }
 
-    suspend fun createNote(id: String, dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {
-        val docRef = notesCollection.document(id)
+    suspend fun createNote(uid: String, id: String, dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {
+        val docRef = notesCollection(uid).document(id)
         docRef.set(dto).await()
         return id to dto
     }
 
-    suspend fun updateNote(id: String, dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {
-        notesCollection.document(id).set(dto).await()
+    suspend fun updateNote(uid: String, id: String, dto: NoteRemoteDto): Pair<String, NoteRemoteDto> {
+        notesCollection(uid).document(id).set(dto).await()
         return id to dto
     }
 
-    suspend fun deleteNote(id: String) {
-        notesCollection.document(id).delete().await()
+    suspend fun deleteNote(uid: String, id: String) {
+        notesCollection(uid).document(id).delete().await()
     }
 
-    suspend fun fetchNotesOnce(): List<Pair<String, NoteRemoteDto>> {
-        val snapshot = notesCollection.get().await()
+    suspend fun fetchNotesOnce(uid: String): List<Pair<String, NoteRemoteDto>> {
+        val snapshot = notesCollection(uid).get().await()
         return snapshot.documents.mapNotNull { doc ->
             val dto = doc.toObject(NoteRemoteDto::class.java)
             dto?.let { doc.id to it }
         }
     }
-
 }

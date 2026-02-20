@@ -8,6 +8,7 @@ import com.ar.data.category.local.CategoryLocalDataSource
 import com.ar.data.category.mapper.toDomain
 import com.ar.data.category.mapper.toRemoteDto
 import com.ar.data.category.remote.CategoryRemoteDataSource
+import com.ar.domain.auth.repository.AuthRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -16,14 +17,18 @@ class CategorySyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val local: CategoryLocalDataSource,
-    private val remote: CategoryRemoteDataSource
+    private val remote: CategoryRemoteDataSource,
+    private val authRepository: AuthRepository
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        val uid = runCatching { authRepository.ensureSignedIn() }
+            .getOrElse { return Result.retry() }
+
         // 1) DELETE
         local.getPendingDeletes().forEach { entity ->
             try {
-                remote.deleteCategory(entity.id)
+                remote.deleteCategory(uid, entity.id)
                 local.hardDelete(entity.id)
             } catch (e: Exception) {
                 return Result.retry()
@@ -33,7 +38,7 @@ class CategorySyncWorker @AssistedInject constructor(
         // 2) CREATE
         local.getPendingCreates().forEach { entity ->
             try {
-                remote.createCategory(entity.id, entity.toDomain().toRemoteDto())
+                remote.createCategory(uid, entity.id, entity.toDomain().toRemoteDto())
                 local.markAsSynced(entity.id)
             } catch (e: Exception) {
                 return Result.retry()

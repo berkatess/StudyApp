@@ -21,8 +21,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -69,7 +69,7 @@ dependencies {
     implementation(libs.accompanist.flowlayout)
     implementation(libs.androidx.compose.material3)
     implementation(platform(libs.androidx.compose.bom))
-    implementation (libs.accompanist.flowlayout)
+    implementation(libs.accompanist.flowlayout)
 
     implementation(libs.androidx.material.icons.extended)
 
@@ -82,24 +82,27 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
 
     // Google Identity Services
-    implementation(libs.googleid
-    )
+    implementation(libs.googleid)
 
+    // test
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 
-    // Modüles
+    // Modules
     implementation(project(":domain"))
     implementation(project(":data"))
 
-    //Hilt
+    // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 
     // Hilt + Jetpack Compose
     implementation(libs.androidx.hilt.navigation.compose)
 
-    //WorkManager
+    // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     kapt(libs.androidx.hilt.compiler)
-
 }

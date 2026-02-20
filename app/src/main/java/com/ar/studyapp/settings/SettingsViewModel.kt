@@ -2,20 +2,33 @@ package com.ar.studyapp.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ar.domain.auth.repository.AuthRepository
-import com.ar.domain.auth.repository.GoogleAuthRepository
+import com.ar.core.result.Result
+import com.ar.domain.auth.usecase.DeleteAccountUseCase
+import com.ar.domain.auth.usecase.ObserveGoogleUserUseCase
+import com.ar.domain.auth.usecase.SignInWithGoogleIdTokenUseCase
+import com.ar.domain.auth.usecase.SignOutUseCase
 import com.ar.domain.settings.model.ThemeMode
 import com.ar.domain.settings.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class SettingsAuthUiState(
+    val isInProgress: Boolean = false,
+    val errorMessage: String? = null
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val googleAuthRepository: GoogleAuthRepository
+    private val observeGoogleUserUseCase: ObserveGoogleUserUseCase,
+    private val signInWithGoogleIdTokenUseCase: SignInWithGoogleIdTokenUseCase,
+    private val signOutUseCase: SignOutUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase
 ) : ViewModel() {
 
     val themeMode = settingsRepository.themeMode.stateIn(
@@ -26,6 +39,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), null
     )
 
+    val user = observeGoogleUserUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _authUiState = MutableStateFlow(SettingsAuthUiState())
+    val authUiState: StateFlow<SettingsAuthUiState> = _authUiState
+
+    fun reportAuthError(message: String) {
+        _authUiState.value = SettingsAuthUiState(isInProgress = false, errorMessage = message)
+    }
+
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch {
         settingsRepository.setThemeMode(mode)
     }
@@ -34,12 +57,42 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.setLanguageTag(tag)
     }
 
-    val user = googleAuthRepository.user // Flow<UserInfo?>
-
-    fun signOut() = viewModelScope.launch { googleAuthRepository.signOut() }
-    fun deleteAccount() = viewModelScope.launch { googleAuthRepository.deleteAccount() }
-
     fun signInWithGoogleIdToken(idToken: String) = viewModelScope.launch {
-        googleAuthRepository.signInWithGoogleIdToken(idToken)
+        _authUiState.value = SettingsAuthUiState(isInProgress = true)
+
+        when (val result = signInWithGoogleIdTokenUseCase(idToken)) {
+            is Result.Success -> _authUiState.value = SettingsAuthUiState(isInProgress = false)
+            is Result.Error -> _authUiState.value = SettingsAuthUiState(
+                isInProgress = false,
+                errorMessage = result.message ?: "Google sign-in failed"
+            )
+            Result.Loading -> Unit
+        }
+    }
+
+    fun signOut() = viewModelScope.launch {
+        _authUiState.value = SettingsAuthUiState(isInProgress = true)
+
+        when (val result = signOutUseCase(Unit)) {
+            is Result.Success -> _authUiState.value = SettingsAuthUiState(isInProgress = false)
+            is Result.Error -> _authUiState.value = SettingsAuthUiState(
+                isInProgress = false,
+                errorMessage = result.message ?: "Sign out failed"
+            )
+            Result.Loading -> Unit
+        }
+    }
+
+    fun deleteAccount() = viewModelScope.launch {
+        _authUiState.value = SettingsAuthUiState(isInProgress = true)
+
+        when (val result = deleteAccountUseCase(Unit)) {
+            is Result.Success -> _authUiState.value = SettingsAuthUiState(isInProgress = false)
+            is Result.Error -> _authUiState.value = SettingsAuthUiState(
+                isInProgress = false,
+                errorMessage = result.message ?: "Delete account failed"
+            )
+            Result.Loading -> Unit
+        }
     }
 }

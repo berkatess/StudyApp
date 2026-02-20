@@ -4,14 +4,21 @@ import com.ar.core.data.FetchStrategy
 import com.ar.core.result.Result
 import com.ar.domain.note.model.Note
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 
 class FakeNoteRepository : NoteRepository {
 
+    // Basit in-memory “DB”
+    private val notesState = MutableStateFlow<List<Note>>(emptyList())
+
+    // getNotes() için Result kontrolü
     private var notesResult: Result<List<Note>> = Result.Success(emptyList())
     private var emitLoadingFirst: Boolean = false
 
     fun setNotes(list: List<Note>) {
+        notesState.value = list
         notesResult = Result.Success(list)
     }
 
@@ -21,11 +28,10 @@ class FakeNoteRepository : NoteRepository {
 
     fun setLoadingThenNotes(list: List<Note>) {
         emitLoadingFirst = true
-        notesResult = Result.Success(list)
+        setNotes(list)
     }
 
-    override fun getNotes(strategy: FetchStrategy): Flow<Result<List<Note>>>{
-        // If enabled, emit Loading first, then the current result (Success/Error)
+    override fun getNotes(strategy: FetchStrategy): Flow<Result<List<Note>>> {
         return if (emitLoadingFirst) {
             emitLoadingFirst = false
             kotlinx.coroutines.flow.flow {
@@ -37,26 +43,33 @@ class FakeNoteRepository : NoteRepository {
         }
     }
 
-    override suspend fun hasAnyNotesLocally(): Boolean =
-        (notesResult as? Result.Success)?.data?.isNotEmpty() == true
+    override suspend fun hasAnyNotesLocally(): Boolean = notesState.value.isNotEmpty()
 
-    override fun getNotesByCategory(categoryId: String, strategy: FetchStrategy): Flow<Result<List<Note>>> {
-        error("Not used in this unit test")
+
+    override suspend fun createNote(note: Note): Result<Note> {
+        val newList = notesState.value + note
+        notesState.value = newList
+        return Result.Success(note)
     }
 
+    override suspend fun updateNote(note: Note): Result<Note> {
+        val newList = notesState.value.map { if (it.id == note.id) note else it }
+        notesState.value = newList
+        return Result.Success(note)
+    }
+
+    override suspend fun deleteNote(id: String): Result<Unit> {
+        notesState.value = notesState.value.filterNot { it.id == id }
+        return Result.Success(Unit)
+    }
+
+    override fun getNotesByCategory(categoryId: String, strategy: FetchStrategy): Flow<Result<List<Note>>> {
+        error("Not used in these unit tests")
+    }
 
     override fun getNoteById(id: String): Flow<Result<Note>> =
-        error("Not used in this unit test")
+        error("Not used in these unit tests")
 
     override suspend fun refreshNotes(): Result<Unit> =
-        error("Not used in this unit test")
-
-    override suspend fun createNote(note: Note): Result<Note> =
-        error("Not used in this unit test")
-
-    override suspend fun updateNote(note: Note): Result<Note> =
-        error("Not used in this unit test")
-
-    override suspend fun deleteNote(id: String): Result<Unit> =
-        error("Not used in this unit test")
+        error("Not used in these unit tests")
 }

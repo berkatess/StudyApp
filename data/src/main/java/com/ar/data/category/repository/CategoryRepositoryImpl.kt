@@ -18,6 +18,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -75,8 +76,6 @@ class CategoryRepositoryImpl @Inject constructor(
         runCatching {
             if (!networkMonitor.isOnlineNow()) return@runCatching
 
-            authRepository.ensureSignedIn()
-
             val remoteDomain = fetchCategoriesRemoteOnce()
             cacheRemoteCategoriesAsSynced(remoteDomain)
         }.fold(
@@ -100,16 +99,17 @@ class CategoryRepositoryImpl @Inject constructor(
                 }
 
                 // 3) Remote one-shot fetch (only if needed)
-                authRepository.ensureSignedIn()
+                val uid = authRepository.ensureSignedIn()
 
-                val remotePair = remote.getCategoryById(id)
+                val remotePair = remote.getCategoryById(uid, id)
                     ?: return@withContext Result.Error("Category not found")
 
                 val (docId, dto) = remotePair
                 val domain = dto.toDomain(docId)
 
                 // 4) Do not overwrite locally pending changes
-                val pendingIds = local.getPendingCreates().mapTo(mutableSetOf()) { it.id }
+                val pendingIds = local.getPendingCreates()
+                    .mapTo(mutableSetOf()) { it.id }
                     .apply { addAll(local.getPendingDeletes().map { it.id }) }
 
                 // If this id is pending delete, don't resurrect it from remote
@@ -129,7 +129,6 @@ class CategoryRepositoryImpl @Inject constructor(
             }
         }
 
-
     /**
      * One-shot getter kept for backward compatibility.
      * Prefer observeCategories() + refreshCategories() for UI.
@@ -137,8 +136,6 @@ class CategoryRepositoryImpl @Inject constructor(
     override suspend fun getCategories(): Result<List<Category>> = withContext(dispatchers.io) {
         try {
             if (networkMonitor.isOnlineNow()) {
-                authRepository.ensureSignedIn()
-
                 val remoteDomain = fetchCategoriesRemoteOnce()
                 cacheRemoteCategoriesAsSynced(remoteDomain)
 
@@ -247,16 +244,22 @@ class CategoryRepositoryImpl @Inject constructor(
      * Remote snapshot stream mapped to domain models.
      * Used only to refresh local cache.
      */
-    private fun getCategoriesRemote(): Flow<List<Category>> =
-        remote.observeCategories()
-            .map { pairs -> pairs.map { (id, dto) -> dto.toDomain(id) } }
+    private fun getCategoriesRemote(): Flow<List<Category>> = flow {
+        val uid = authRepository.ensureSignedIn()
+        emitAll(
+            remote.observeCategories(uid)
+                .map { pairs -> pairs.map { (id, dto) -> dto.toDomain(id) } }
+        )
+    }
 
     /**
      * One-shot remote fetch.
      */
-    private suspend fun fetchCategoriesRemoteOnce(): List<Category> =
-        remote.fetchCategoriesOnce()
+    private suspend fun fetchCategoriesRemoteOnce(): List<Category> {
+        val uid = authRepository.ensureSignedIn()
+        return remote.fetchCategoriesOnce(uid)
             .map { (id, dto) -> dto.toDomain(id) }
+    }
 
     /**
      * Writes remote data into local cache as SYNCED.
@@ -313,8 +316,6 @@ class CategoryRepositoryImpl @Inject constructor(
             runCatching {
                 if (!networkMonitor.isOnlineNow()) return@runCatching
 
-                authRepository.ensureSignedIn()
-
                 getCategoriesRemote().collect { domain ->
                     cacheRemoteCategoriesAsSynced(domain)
                 }
@@ -361,7 +362,6 @@ class CategoryRepositoryImpl @Inject constructor(
             val remoteOk = runCatching {
                 if (!networkMonitor.isOnlineNow()) throw IllegalStateException("Offline")
 
-                authRepository.ensureSignedIn()
                 getCategoriesRemote().collect { domain ->
                     if (saveToLocal) runCatching { cacheRemoteCategoriesAsSynced(domain) }
                     send(Result.Success(domain))
@@ -385,7 +385,6 @@ class CategoryRepositoryImpl @Inject constructor(
         emit(Result.Loading)
 
         if (networkMonitor.isOnlineNow()) {
-            authRepository.ensureSignedIn()
             val remoteDomain = fetchCategoriesRemoteOnce()
             cacheRemoteCategoriesAsSynced(remoteDomain)
         }

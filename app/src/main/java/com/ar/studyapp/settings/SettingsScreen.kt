@@ -51,14 +51,13 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.RateReview
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.credentials.CredentialManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ar.domain.settings.model.ThemeMode
+import com.ar.studyapp.BuildConfig
 import com.ar.studyapp.R
-import com.google.firebase.BuildConfig
 import kotlinx.coroutines.launch
 
 /**
@@ -82,9 +81,10 @@ fun SettingsRoute(
     val context = LocalContext.current
 
     // Collect state
-    val themeModeDomain by viewModel.themeMode.collectAsState()
-    val languageTag by viewModel.languageTag.collectAsState()
-    val userDomain by viewModel.user.collectAsState(initial = null)
+    val themeModeDomain by viewModel.themeMode.collectAsStateWithLifecycle()
+    val languageTag by viewModel.languageTag.collectAsStateWithLifecycle()
+    val userDomain by viewModel.user.collectAsStateWithLifecycle()
+    val authUiState by viewModel.authUiState.collectAsStateWithLifecycle()
 
     // Map domain -> UI
     val themeModeUi = themeModeDomain.toUi()
@@ -92,17 +92,25 @@ fun SettingsRoute(
     val userUi = userDomain?.toUi()
 
     // Google sign-in helper (Credential Manager)
-    val credentialManager = CredentialManager.create(context)
-    val webClientId = "asddasdsa"
+    // Important: Credential Manager expects the *Web* OAuth client ID (server client ID),
+    // not the Android client ID. With Firebase, `default_web_client_id` is generated from
+    // app/google-services.json by the Google Services Gradle plugin.
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val webClientId = remember(context) { context.getString(R.string.default_web_client_id) }
 
     val googleSignIn = GoogleCredentialManagerSignIn(
         credentialManager = credentialManager,
         webClientId = webClientId
     )
 
+    if (BuildConfig.DEBUG) {
+        android.util.Log.d("AUTH", "Using default_web_client_id from google-services.json")
+    }
+
     SettingsScreen(
         // State
         user = userUi,
+        authState = authUiState,
         themeMode = themeModeUi,
         languageTag = languageTag,
 
@@ -111,14 +119,34 @@ fun SettingsRoute(
 
         // Account actions
         onGoogleSignInClick = { activity: Activity ->
-            // webClientId boşsa crash/boş token olmasın
-            if (webClientId.isBlank()) return@SettingsScreen
-
-            val idToken = googleSignIn.getIdToken(activity)
-            if (idToken.isNotBlank()) {
-                viewModel.signInWithGoogleIdToken(idToken)
+            // Do not fail silently; surface errors so it is clear why sign-in did not complete.
+            if (webClientId.isBlank()) {
+                val message =
+                    "Missing default_web_client_id. Download an updated google-services.json from Firebase and ensure Google sign-in is enabled."
+                android.util.Log.e("AUTH", message)
+                viewModel.reportAuthError(message)
+                return@SettingsScreen
             }
+
+            val idToken = runCatching { googleSignIn.getIdToken(activity) }
+                .getOrElse {
+                    val message = "Failed to obtain Google ID token. ${it.message ?: ""}".trim()
+                    android.util.Log.e("AUTH", message, it)
+                    viewModel.reportAuthError(message)
+                    return@SettingsScreen
+                }
+
+            if (idToken.isBlank()) {
+                val message =
+                    "Google ID token is empty. Check that you are using the Web client ID (default_web_client_id) and that SHA-1 is configured in Firebase/Google Cloud."
+                android.util.Log.e("AUTH", message)
+                viewModel.reportAuthError(message)
+                return@SettingsScreen
+            }
+
+            viewModel.signInWithGoogleIdToken(idToken)
         },
+
         onSignOutClick = viewModel::signOut,
         onDeleteAccountClick = viewModel::deleteAccount,
 
@@ -143,6 +171,7 @@ fun SettingsRoute(
 fun SettingsScreen(
     // State
     user: SettingsUserUi?,                // null or anonymous => show Google sign-in button
+    authState: SettingsAuthUiState,
     themeMode: ThemeModeUi,
     languageTag: String?,                 // null => System default
 
@@ -167,7 +196,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val activity = context as Activity
+    val activity = context as? Activity
     val scope = rememberCoroutineScope()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -201,6 +230,15 @@ fun SettingsScreen(
                 title = "Hesap",
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) }
             ) {
+                authState.errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 if (user == null || user.isAnonymous) {
                     Text(
                         text = "Giriş yapmadan kullanabilirsin. Google ile giriş yaparsan verilerin hesabına bağlanır ve cihaz değiştirince geri alabilirsin.",
@@ -211,10 +249,11 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                onGoogleSignInClick(activity)
+                                activity?.let { onGoogleSignInClick(it) }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !authState.isInProgress
                     ) {
                         Text("Google ile giriş")
                     }
@@ -244,7 +283,8 @@ fun SettingsScreen(
                     ) {
                         OutlinedButton(
                             onClick = onSignOutClick,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            enabled = !authState.isInProgress
                         ) {
                             Icon(Icons.Filled.Logout, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
@@ -253,7 +293,8 @@ fun SettingsScreen(
 
                         OutlinedButton(
                             onClick = { showDeleteDialog = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            enabled = !authState.isInProgress
                         ) {
                             Icon(Icons.Filled.Delete, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
@@ -401,6 +442,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 Button(
+                    enabled = !authState.isInProgress,
                     onClick = {
                         showDeleteDialog = false
                         onDeleteAccountClick()
@@ -408,7 +450,10 @@ fun SettingsScreen(
                 ) { Text("Sil") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Vazgeç") }
+                OutlinedButton(
+                    onClick = { showDeleteDialog = false },
+                    enabled = !authState.isInProgress
+                ) { Text("Vazgeç") }
             }
         )
     }
@@ -484,7 +529,6 @@ private fun openPlayStore(context: Context, packageName: String) {
     }
 }
 
-
 /* -------------------- MAPPERS -------------------- */
 
 private fun ThemeMode.toUi(): ThemeModeUi = when (this) {
@@ -500,10 +544,10 @@ private fun ThemeModeUi.toDomain(): ThemeMode = when (this) {
 }
 
 /**
- * Domain modelin muhtemelen şöyle bir şey:
+ * Your domain model probably looks like this:
  * data class UserInfo(val uid: String, val email: String?, val isAnonymous: Boolean)
  *
- * Eğer senin domain UserInfo'n farklıysa, şu mapper'ı ona göre uyarlayacağız.
+ * If your domain UserInfo is different, adjust this mapper accordingly.
  */
 private fun com.ar.domain.auth.model.UserInfo.toUi(): SettingsUserUi {
     return SettingsUserUi(
@@ -512,4 +556,3 @@ private fun com.ar.domain.auth.model.UserInfo.toUi(): SettingsUserUi {
         isAnonymous = isAnonymous
     )
 }
-

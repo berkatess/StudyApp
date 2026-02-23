@@ -24,6 +24,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.time.Instant
+import com.ar.domain.auth.model.UserInfo
+import com.ar.domain.auth.usecase.ObserveGoogleUserUseCase
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NoteListViewModelTest {
@@ -75,13 +77,17 @@ class NoteListViewModelTest {
         every { observeCategoriesUseCase(any()) } returns flowOf(Result.Success(categories))
 
         // --- Create VM ---
+        val observeGoogleUserUseCase = mockk<ObserveGoogleUserUseCase>()
+        every { observeGoogleUserUseCase() } returns flowOf(UserInfo(uid = "u1", email = null, isAnonymous = false))
+
         val vm = NoteListViewModel(
             getNotesUseCase = getNotesUseCase,
             observeCategoriesUseCase = observeCategoriesUseCase,
             deleteCategoryUseCase = deleteCategoryUseCase,
             deleteNoteUseCase = deleteNoteUseCase,
             noteRepository = noteRepository,
-            networkMonitor = networkMonitor
+            networkMonitor = networkMonitor,
+            observeGoogleUserUseCase = observeGoogleUserUseCase
         )
 
         // coroutine/flow
@@ -142,13 +148,17 @@ class NoteListViewModelTest {
         every { getNotesUseCase(any()) } returns flowOf(Result.Success(notes))
         every { observeCategoriesUseCase(any()) } returns flowOf(Result.Success(categories))
 
+        val observeGoogleUserUseCase = mockk<ObserveGoogleUserUseCase>()
+        every { observeGoogleUserUseCase() } returns flowOf(UserInfo(uid = "u1", email = null, isAnonymous = false))
+
         val vm = NoteListViewModel(
             getNotesUseCase = getNotesUseCase,
             observeCategoriesUseCase = observeCategoriesUseCase,
             deleteCategoryUseCase = deleteCategoryUseCase,
             deleteNoteUseCase = deleteNoteUseCase,
             noteRepository = noteRepository,
-            networkMonitor = networkMonitor
+            networkMonitor = networkMonitor,
+            observeGoogleUserUseCase = observeGoogleUserUseCase
         )
 
         advanceUntilIdle()
@@ -194,13 +204,17 @@ class NoteListViewModelTest {
         every { getNotesUseCase(any()) } returns flowOf(Result.Success(notes))
         every { observeCategoriesUseCase(any()) } returns flowOf(Result.Success(categories))
 
+        val observeGoogleUserUseCase = mockk<ObserveGoogleUserUseCase>()
+        every { observeGoogleUserUseCase() } returns flowOf(UserInfo(uid = "u1", email = null, isAnonymous = false))
+
         val vm = NoteListViewModel(
             getNotesUseCase = getNotesUseCase,
             observeCategoriesUseCase = observeCategoriesUseCase,
             deleteCategoryUseCase = deleteCategoryUseCase,
             deleteNoteUseCase = deleteNoteUseCase,
             noteRepository = noteRepository,
-            networkMonitor = networkMonitor
+            networkMonitor = networkMonitor,
+            observeGoogleUserUseCase = observeGoogleUserUseCase
         )
 
         advanceUntilIdle()

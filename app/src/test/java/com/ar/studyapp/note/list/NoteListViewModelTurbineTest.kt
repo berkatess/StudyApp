@@ -25,12 +25,15 @@ import org.junit.Rule
 import org.junit.Test
 import java.time.Instant
 import kotlinx.coroutines.test.advanceUntilIdle
+import com.ar.domain.auth.model.UserInfo
+import com.ar.domain.auth.usecase.ObserveGoogleUserUseCase
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NoteListViewModelTurbineTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
 
     @Test
     fun `uiState emits Loading then Success`() = runTest {
@@ -46,6 +49,8 @@ class NoteListViewModelTurbineTest {
         every { networkMonitor.isOnline } returns onlineFlow
         coEvery { networkMonitor.isOnlineNow() } returns true
         coEvery { noteRepository.hasAnyNotesLocally() } returns true
+        val observeGoogleUserUseCase = mockk<ObserveGoogleUserUseCase>()
+        every { observeGoogleUserUseCase() } returns flowOf(UserInfo(uid = "u1", email = null, isAnonymous = false))
 
         val categories = listOf(Category(id = "c1", name = "Work", colorHex = "#FF0000"))
         val notes = listOf(
@@ -76,7 +81,8 @@ class NoteListViewModelTurbineTest {
             deleteCategoryUseCase = deleteCategoryUseCase,
             deleteNoteUseCase = deleteNoteUseCase,
             noteRepository = noteRepository,
-            networkMonitor = networkMonitor
+            networkMonitor = networkMonitor,
+            observeGoogleUserUseCase = observeGoogleUserUseCase
         )
 
         // --- Turbine ile "zaman içindeki sıra" testi ---
@@ -123,13 +129,17 @@ class NoteListViewModelTurbineTest {
             emit(Result.Success(emptyList()))
         }
 
+        val observeGoogleUserUseCase = mockk<ObserveGoogleUserUseCase>()
+        every { observeGoogleUserUseCase() } returns flowOf(UserInfo(uid = "u1", email = null, isAnonymous = false))
+
         val vm = NoteListViewModel(
             getNotesUseCase = getNotesUseCase,
             observeCategoriesUseCase = observeCategoriesUseCase,
             deleteCategoryUseCase = deleteCategoryUseCase,
             deleteNoteUseCase = deleteNoteUseCase,
             noteRepository = noteRepository,
-            networkMonitor = networkMonitor
+            networkMonitor = networkMonitor,
+            observeGoogleUserUseCase = observeGoogleUserUseCase
         )
 
         vm.uiState.test {

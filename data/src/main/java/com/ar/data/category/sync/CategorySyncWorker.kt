@@ -22,8 +22,7 @@ class CategorySyncWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val uid = runCatching { authRepository.ensureSignedIn() }
-            .getOrElse { return Result.retry() }
+        val uid = authRepository.currentNonAnonymousUserIdOrNull() ?: return Result.success()
 
         // 1) DELETE
         local.getPendingDeletes().forEach { entity ->
@@ -35,7 +34,7 @@ class CategorySyncWorker @AssistedInject constructor(
             }
         }
 
-        // 2) CREATE
+        // 2) CREATE/UPDATE (upsert)
         local.getPendingCreates().forEach { entity ->
             try {
                 remote.createCategory(uid, entity.id, entity.toDomain().toRemoteDto())

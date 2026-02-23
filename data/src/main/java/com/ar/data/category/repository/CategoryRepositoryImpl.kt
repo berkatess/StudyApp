@@ -38,6 +38,9 @@ import javax.inject.Singleton
  *
  * UI always observes local database.
  * Remote is used only to refresh local cache or to perform one-shot sync.
+ *
+ * Local-only mode:
+ * - If the user is not signed in, remote operations are disabled and everything works from local storage.
  */
 @Singleton
 class CategoryRepositoryImpl @Inject constructor(
@@ -49,34 +52,31 @@ class CategoryRepositoryImpl @Inject constructor(
     private val networkMonitor: NetworkMonitor
 ) : CategoryRepository {
 
-    // ------------------------------------------------
-    // Public API (observe + refresh dual design)
-    // ------------------------------------------------
+    private fun signedInUserIdOrNull(): String? = authRepository.currentUserIdOrNull()
 
-    /**
-     * Observes categories using the given fetch strategy.
-     * This is the main entry point for UI layers.
-     */
-    override fun observeCategories(
-        strategy: FetchStrategy
-    ): Flow<Result<List<Category>>> = when (strategy) {
-        FetchStrategy.FAST -> observeCategoriesFast()
-        FetchStrategy.CACHED -> observeCategoriesCached()
-        FetchStrategy.FRESH -> observeCategoriesFresh(saveToLocal = true)
-        FetchStrategy.FALLBACK -> observeCategoriesFallback(saveToLocal = true)
-        FetchStrategy.SYNCED -> observeCategoriesSynced()
+    override fun observeCategories(strategy: FetchStrategy): Flow<Result<List<Category>>> {
+        val uid = signedInUserIdOrNull()
+
+        // Local-only mode: remote strategies fall back to cached local behavior.
+        if (uid == null && strategy in setOf(FetchStrategy.FRESH, FetchStrategy.FALLBACK, FetchStrategy.SYNCED)) {
+            return observeCategoriesCached()
+        }
+
+        return when (strategy) {
+            FetchStrategy.FAST     -> observeCategoriesFast()
+            FetchStrategy.CACHED   -> observeCategoriesCached()
+            FetchStrategy.FRESH    -> observeCategoriesFresh(saveToLocal = true)
+            FetchStrategy.FALLBACK -> observeCategoriesFallback(saveToLocal = true)
+            FetchStrategy.SYNCED   -> observeCategoriesSynced()
+        }
     }
 
-    /**
-     * One-shot synchronization.
-     * Fetches categories from remote and updates local cache.
-     * UI updates automatically via observeCategories().
-     */
     override suspend fun refreshCategories(): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
+            val uid = signedInUserIdOrNull() ?: return@runCatching
             if (!networkMonitor.isOnlineNow()) return@runCatching
 
-            val remoteDomain = fetchCategoriesRemoteOnce()
+            val remoteDomain = fetchCategoriesRemoteOnce(uid)
             cacheRemoteCategoriesAsSynced(remoteDomain)
         }.fold(
             onSuccess = { Result.Success(Unit) },
@@ -93,14 +93,13 @@ class CategoryRepositoryImpl @Inject constructor(
                     return@withContext Result.Success(localEntity.toDomain())
                 }
 
-                // 2) If offline, we cannot fetch remote
-                if (!networkMonitor.isOnlineNow()) {
+                // 2) If offline or not signed in, we cannot fetch remote
+                val uid = signedInUserIdOrNull()
+                if (uid == null || !networkMonitor.isOnlineNow()) {
                     return@withContext Result.Error("Category not found locally")
                 }
 
                 // 3) Remote one-shot fetch (only if needed)
-                val uid = authRepository.ensureSignedIn()
-
                 val remotePair = remote.getCategoryById(uid, id)
                     ?: return@withContext Result.Error("Category not found")
 
@@ -129,16 +128,13 @@ class CategoryRepositoryImpl @Inject constructor(
             }
         }
 
-    /**
-     * One-shot getter kept for backward compatibility.
-     * Prefer observeCategories() + refreshCategories() for UI.
-     */
     override suspend fun getCategories(): Result<List<Category>> = withContext(dispatchers.io) {
         try {
-            if (networkMonitor.isOnlineNow()) {
-                val remoteDomain = fetchCategoriesRemoteOnce()
-                cacheRemoteCategoriesAsSynced(remoteDomain)
+            val uid = signedInUserIdOrNull()
 
+            if (uid != null && networkMonitor.isOnlineNow()) {
+                val remoteDomain = fetchCategoriesRemoteOnce(uid)
+                cacheRemoteCategoriesAsSynced(remoteDomain)
                 return@withContext Result.Success(remoteDomain)
             }
 
@@ -172,7 +168,7 @@ class CategoryRepositoryImpl @Inject constructor(
             // Save locally first for immediate UI update
             local.saveCategory(category.toEntity(syncState = SyncState.PENDING))
 
-            // Schedule remote synchronization
+            // Schedule remote synchronization (no-op in local-only mode)
             categorySyncScheduler.schedule()
 
             Result.Success(category)
@@ -200,7 +196,7 @@ class CategoryRepositoryImpl @Inject constructor(
             // Optimistic local update
             local.saveCategory(category.toEntity(syncState = SyncState.PENDING))
 
-            // Schedule remote synchronization
+            // Schedule remote synchronization (no-op in local-only mode)
             categorySyncScheduler.schedule()
 
             Result.Success(category)
@@ -211,10 +207,17 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteCategory(id: String): Result<Unit> = withContext(dispatchers.io) {
         try {
-            // Mark as pending delete locally
-            local.markDeleted(id)
+            val uid = authRepository.currentNonAnonymousUserIdOrNull()
 
-            // Schedule remote synchronization
+            if (uid == null) {
+                // Signed-out mode: treat delete as local-only.
+                // The cloud copy is considered a backup, so it should not be removed.
+                local.hardDelete(id)
+                return@withContext Result.Success(Unit)
+            }
+
+            // Signed-in mode: mark as pending delete and sync via WorkManager.
+            local.markDeleted(id)
             categorySyncScheduler.schedule()
 
             Result.Success(Unit)
@@ -227,52 +230,29 @@ class CategoryRepositoryImpl @Inject constructor(
     // Single Source of Truth helpers
     // ------------------------------------------------
 
-    /**
-     * Local database stream mapped to domain models.
-     */
     private fun getCategoriesLocal(): Flow<List<Category>> =
         local.observeCategories()
             .map { entities -> entities.map { it.toDomain() } }
 
-    /**
-     * One-shot local read.
-     */
     private suspend fun getCategoriesLocalOnce(): List<Category> =
         local.getCategories().map { it.toDomain() }
 
-    /**
-     * Remote snapshot stream mapped to domain models.
-     * Used only to refresh local cache.
-     */
-    private fun getCategoriesRemote(): Flow<List<Category>> = flow {
-        val uid = authRepository.ensureSignedIn()
+    private fun getCategoriesRemote(uid: String): Flow<List<Category>> = flow {
         emitAll(
             remote.observeCategories(uid)
                 .map { pairs -> pairs.map { (id, dto) -> dto.toDomain(id) } }
         )
     }
 
-    /**
-     * One-shot remote fetch.
-     */
-    private suspend fun fetchCategoriesRemoteOnce(): List<Category> {
-        val uid = authRepository.ensureSignedIn()
+    private suspend fun fetchCategoriesRemoteOnce(uid: String): List<Category> {
         return remote.fetchCategoriesOnce(uid)
             .map { (id, dto) -> dto.toDomain(id) }
     }
 
-    /**
-     * Writes remote data into local cache as SYNCED.
-     * Pending local changes (PENDING / PENDING_DELETE) are never overwritten.
-     *
-     * This prevents "revert to old state after update" issues.
-     */
     private suspend fun cacheRemoteCategoriesAsSynced(categories: List<Category>) {
         val pendingIds = local.getPendingCreates()
             .mapTo(mutableSetOf()) { it.id }
-            .apply {
-                addAll(local.getPendingDeletes().map { it.id })
-            }
+            .apply { addAll(local.getPendingDeletes().map { it.id }) }
 
         val toUpsert = categories
             .filterNot { it.id in pendingIds }
@@ -287,10 +267,6 @@ class CategoryRepositoryImpl @Inject constructor(
     // Strategy implementations
     // ------------------------------------------------
 
-    /**
-     * CACHED:
-     * Emits data only from local database.
-     */
     private fun observeCategoriesCached(): Flow<Result<List<Category>>> =
         getCategoriesLocal()
             .map<List<Category>, Result<List<Category>>> { Result.Success(it) }
@@ -298,11 +274,6 @@ class CategoryRepositoryImpl @Inject constructor(
             .catch { e -> emit(Result.Error("Failed to load categories locally", e)) }
             .flowOn(dispatchers.io)
 
-    /**
-     * FAST:
-     * UI observes local database.
-     * Remote is used only to refresh local cache in background.
-     */
     private fun observeCategoriesFast(): Flow<Result<List<Category>>> = channelFlow {
         send(Result.Loading)
 
@@ -313,10 +284,12 @@ class CategoryRepositoryImpl @Inject constructor(
         }
 
         val remoteJob = launch(dispatchers.io) {
+            val uid = signedInUserIdOrNull() ?: return@launch
+
             runCatching {
                 if (!networkMonitor.isOnlineNow()) return@runCatching
 
-                getCategoriesRemote().collect { domain ->
+                getCategoriesRemote(uid).collect { domain ->
                     cacheRemoteCategoriesAsSynced(domain)
                 }
             }.onFailure { e ->
@@ -335,38 +308,37 @@ class CategoryRepositoryImpl @Inject constructor(
         }
     }.flowOn(dispatchers.io)
 
-    /**
-     * FRESH:
-     * Emits data directly from remote stream.
-     * Optionally updates local cache.
-     */
-    private fun observeCategoriesFresh(saveToLocal: Boolean): Flow<Result<List<Category>>> =
-        getCategoriesRemote()
-            .map<List<Category>, Result<List<Category>>> { domain ->
-                if (saveToLocal) runCatching { cacheRemoteCategoriesAsSynced(domain) }
-                Result.Success(domain)
-            }
-            .onStart { emit(Result.Loading) }
-            .catch { e -> emit(Result.Error("Failed to load categories from remote", e)) }
-            .flowOn(dispatchers.io)
+    private fun observeCategoriesFresh(saveToLocal: Boolean): Flow<Result<List<Category>>> = flow {
+        val uid = signedInUserIdOrNull()
+            ?: throw IllegalStateException("Sign-in required for remote fetch")
 
-    /**
-     * FALLBACK:
-     * Tries remote stream first.
-     * Falls back to local stream on failure.
-     */
+        emitAll(
+            getCategoriesRemote(uid)
+                .map<List<Category>, Result<List<Category>>> { domain ->
+                    if (saveToLocal) runCatching { cacheRemoteCategoriesAsSynced(domain) }
+                    Result.Success(domain)
+                }
+                .onStart { emit(Result.Loading) }
+        )
+    }.catch { e ->
+        emit(Result.Error("Failed to load categories from remote", e))
+    }.flowOn(dispatchers.io)
+
     private fun observeCategoriesFallback(saveToLocal: Boolean): Flow<Result<List<Category>>> =
         channelFlow {
             send(Result.Loading)
 
-            val remoteOk = runCatching {
-                if (!networkMonitor.isOnlineNow()) throw IllegalStateException("Offline")
-
-                getCategoriesRemote().collect { domain ->
-                    if (saveToLocal) runCatching { cacheRemoteCategoriesAsSynced(domain) }
-                    send(Result.Success(domain))
-                }
-            }.isSuccess
+            val uid = signedInUserIdOrNull()
+            val remoteOk = if (uid != null && networkMonitor.isOnlineNow()) {
+                runCatching {
+                    getCategoriesRemote(uid).collect { domain ->
+                        if (saveToLocal) runCatching { cacheRemoteCategoriesAsSynced(domain) }
+                        send(Result.Success(domain))
+                    }
+                }.isSuccess
+            } else {
+                false
+            }
 
             if (!remoteOk) {
                 getCategoriesLocal().collect { domain ->
@@ -377,15 +349,12 @@ class CategoryRepositoryImpl @Inject constructor(
             emit(Result.Error("Failed to load categories (remote + local fallback)", e))
         }.flowOn(dispatchers.io)
 
-    /**
-     * SYNCED:
-     * Performs one-shot remote sync, then emits local stream.
-     */
     private fun observeCategoriesSynced(): Flow<Result<List<Category>>> = flow {
         emit(Result.Loading)
 
-        if (networkMonitor.isOnlineNow()) {
-            val remoteDomain = fetchCategoriesRemoteOnce()
+        val uid = signedInUserIdOrNull()
+        if (uid != null && networkMonitor.isOnlineNow()) {
+            val remoteDomain = fetchCategoriesRemoteOnce(uid)
             cacheRemoteCategoriesAsSynced(remoteDomain)
         }
 

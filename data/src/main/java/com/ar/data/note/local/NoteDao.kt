@@ -20,8 +20,11 @@ interface NoteDao {
     @Query("UPDATE notes SET syncState = :state WHERE id = :id")
     suspend fun updateSyncState(id: String, state: SyncState)
 
-    @Query("SELECT * FROM notes WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM notes WHERE id = :id AND isDeleted = 0 LIMIT 1")
     suspend fun getNoteById(id: String): NoteEntity?
+
+    @Query("SELECT * FROM notes WHERE id = :id AND isDeleted = 0 LIMIT 1")
+    fun observeNoteById(id: String): Flow<NoteEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNote(note: NoteEntity)
@@ -52,8 +55,4 @@ interface NoteDao {
 
     @Query("SELECT COUNT(*) FROM notes")
     suspend fun countNotes(): Int
-
-
-
-
 }

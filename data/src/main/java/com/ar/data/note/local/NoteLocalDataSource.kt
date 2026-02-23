@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
 @Singleton
 class NoteLocalDataSource @Inject constructor(
     private val dao: NoteDao
@@ -17,15 +16,16 @@ class NoteLocalDataSource @Inject constructor(
 
     suspend fun getNoteById(id: String): NoteEntity? = dao.getNoteById(id)
 
+    fun observeNoteById(id: String): Flow<NoteEntity?> = dao.observeNoteById(id)
+
     suspend fun saveNotes(notes: List<NoteEntity>) = dao.insertNotes(notes)
 
     suspend fun saveNote(note: NoteEntity) = dao.insertNote(note)
 
     suspend fun deleteNote(id: String) = dao.deleteNote(id)
 
-    suspend fun getPendingNotes(): List<NoteEntity> {
-        return dao.getNotesBySyncState(SyncState.PENDING)
-    }
+    suspend fun getPendingNotes(): List<NoteEntity> =
+        dao.getNotesBySyncState(SyncState.PENDING)
 
     suspend fun hasAnyNotes(): Boolean = dao.countNotes() > 0
 
@@ -33,7 +33,7 @@ class NoteLocalDataSource @Inject constructor(
         dao.updateSyncState(id, SyncState.SYNCED)
     }
 
-    suspend fun updateNote(note: NoteEntity){
+    suspend fun updateNote(note: NoteEntity) {
         dao.updateNote(note)
     }
 

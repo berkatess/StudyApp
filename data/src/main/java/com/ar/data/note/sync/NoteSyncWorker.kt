@@ -24,8 +24,7 @@ class NoteSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         android.util.Log.d("NoteSyncWorker", "WORKER STARTED")
 
-        val uid = runCatching { authRepository.ensureSignedIn() }
-            .getOrElse { return Result.retry() }
+        val uid = authRepository.currentNonAnonymousUserIdOrNull() ?: return Result.success()
 
         val pendingDeletes = local.getPendingDeletes()
         for (entity in pendingDeletes) {

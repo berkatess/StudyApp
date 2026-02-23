@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ar.core.data.FetchStrategy
 import com.ar.core.network.NetworkMonitor
 import com.ar.core.result.Result
+import com.ar.domain.auth.usecase.ObserveGoogleUserUseCase
 import com.ar.domain.category.model.Category
 import com.ar.domain.category.usecase.ObserveCategoriesUseCase
 import com.ar.domain.category.usecase.DeleteCategoryUseCase
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -41,6 +43,7 @@ sealed interface NotesUiState {
         val selectedCategoryId: String?,
         val searchQuery: String
     ) : NotesUiState
+
     data class Error(val message: String) : NotesUiState
 }
 
@@ -58,7 +61,8 @@ class NoteListViewModel @Inject constructor(
     private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
     private val noteRepository: NoteRepository,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val observeGoogleUserUseCase: ObserveGoogleUserUseCase
 ) : ViewModel() {
 
     /**
@@ -81,23 +85,16 @@ class NoteListViewModel @Inject constructor(
 
     private val userPreferredStrategy = MutableStateFlow(FetchStrategy.FAST)
 
-    // Holds the search query for notes list
     private val searchQuery = MutableStateFlow("")
-
-    // Called when user types into search field
     fun onSearchQueryChange(query: String) {
         searchQuery.value = query
     }
 
-    // Called when user closes search
     fun clearSearch() {
         searchQuery.value = ""
     }
 
-    // Holds currently selected category id
     private val selectedCategoryId = MutableStateFlow<String?>(null)
-
-    // Called when a category chip is selected from UI
     fun onCategorySelected(categoryId: String?) {
         val current = selectedCategoryId.value
         selectedCategoryId.value = if (current == categoryId) null else categoryId
@@ -107,28 +104,39 @@ class NoteListViewModel @Inject constructor(
         networkMonitor.isOnline
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    private val isSignedIn: StateFlow<Boolean> =
+        observeGoogleUserUseCase()
+            .map { it != null }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    private val canUseRemote: StateFlow<Boolean> =
+        combine(isOnline, isSignedIn) { online, signedIn ->
+            online && signedIn
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val effectiveStrategy: StateFlow<FetchStrategy> =
-        combine(userPreferredStrategy, isOnline) { preferred, online ->
-            if (!online) FetchStrategy.CACHED else preferred
+        combine(userPreferredStrategy, canUseRemote) { preferred, remoteAllowed ->
+            if (!remoteAllowed) FetchStrategy.CACHED else preferred
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FetchStrategy.FAST)
 
     init {
         observeNotesAndCategories()
 
-        // Initial sync when app is online and local storage is empty.
+        // Initial sync when remote is allowed and local storage is empty.
         viewModelScope.launch {
-            val onlineNow = networkMonitor.isOnlineNow()
-            if (onlineNow && !noteRepository.hasAnyNotesLocally()) {
+            val remoteAllowedNow = networkMonitor.isOnlineNow() && observeGoogleUserUseCase().first() != null
+            if (remoteAllowedNow && !noteRepository.hasAnyNotesLocally()) {
                 getNotesUseCase(FetchStrategy.SYNCED).first()
             }
         }
 
-        // When coming back online, try to sync if local storage is empty.
+        // When coming back online, try to sync if remote is allowed and local storage is empty.
         viewModelScope.launch {
             networkMonitor.isOnline
                 .filter { it }
                 .collect {
-                    if (!noteRepository.hasAnyNotesLocally()) {
+                    val remoteAllowedNow = observeGoogleUserUseCase().first() != null
+                    if (remoteAllowedNow && !noteRepository.hasAnyNotesLocally()) {
                         getNotesUseCase(FetchStrategy.SYNCED).first()
                     }
                 }
@@ -139,7 +147,6 @@ class NoteListViewModel @Inject constructor(
         viewModelScope.launch {
             val result = deleteCategoryUseCase(categoryId)
             if (result is Result.Success) {
-                // If the user deleted the currently selected category, clear the filter.
                 if (selectedCategoryId.value == categoryId) {
                     selectedCategoryId.value = null
                 }
@@ -149,7 +156,8 @@ class NoteListViewModel @Inject constructor(
 
     fun onHomeVisible() {
         viewModelScope.launch {
-            if (networkMonitor.isOnlineNow()) {
+            val remoteAllowedNow = networkMonitor.isOnlineNow() && observeGoogleUserUseCase().first() != null
+            if (remoteAllowedNow) {
                 getNotesUseCase(FetchStrategy.SYNCED).first()
             }
         }
@@ -165,7 +173,6 @@ class NoteListViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Combine all UI-affecting inputs in one place to keep SSOT behavior.
             combine(
                 notesFlow,
                 categoriesFlow,
@@ -204,19 +211,15 @@ class NoteListViewModel @Inject constructor(
                     val categories: List<Category> = state.categoriesResult.data
                     val categoriesById = categories.associateBy { it.id }
 
-                    // Update SSOT list for consumers like Detail.
                     _notes.value = notes
                     _categories.value = categories
 
-                    // 1) Category filtering
                     val categoryFiltered = if (state.selectedCategoryId == null) {
                         notes
                     } else {
                         notes.filter { it.categoryId == state.selectedCategoryId }
                     }
 
-                    // 2) Query filtering (title + content)
-                    // Note: Filtering in ViewModel keeps UI dumb and testable.
                     val q = state.query.trim()
                     val fullyFiltered = if (q.isBlank()) {
                         categoryFiltered

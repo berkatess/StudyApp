@@ -12,4 +12,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun ensureSignedIn(): String = firebaseAuthDataSource.ensureSignedIn()
 
     override fun currentUserIdOrNull(): String? = firebaseAuthDataSource.currentUserIdOrNull()
+
+    override fun currentNonAnonymousUserIdOrNull(): String? =
+        firebaseAuthDataSource.currentNonAnonymousUserIdOrNull()
 }

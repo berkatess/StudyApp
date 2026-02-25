@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,11 +16,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,40 +44,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-// If you don't already have these icons, add:
-// implementation("androidx.compose.material:material-icons-extended:<compose_version>")
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PrivacyTip
-import androidx.compose.material.icons.filled.RateReview
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.credentials.CredentialManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ar.domain.settings.model.ThemeMode
+import com.ar.studyapp.AppViewModel
 import com.ar.studyapp.BuildConfig
 import com.ar.studyapp.R
 import kotlinx.coroutines.launch
 
-/**
- * Keep this in app/presentation.
- * Wire it from SettingsRoute with your ViewModel + Credential Manager.
- */
-
-enum class ThemeModeUi { SYSTEM, LIGHT, DARK }
+enum class ThemeModeUi { LIGHT, DARK }
 
 data class SettingsUserUi(
     val uid: String,
@@ -73,28 +68,29 @@ data class SettingsUserUi(
     val isAnonymous: Boolean
 )
 
+/**
+ * Settings route.
+ *
+ * Language is resolved from the device locale automatically (Android resources).
+ * No in-app language overrides.
+ */
 @Composable
 fun SettingsRoute(
     onBackClick: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as ComponentActivity
 
-    // Collect state
-    val themeModeDomain by viewModel.themeMode.collectAsStateWithLifecycle()
-    val languageTag by viewModel.languageTag.collectAsStateWithLifecycle()
+    val appViewModel: AppViewModel = hiltViewModel(activity)
+
+    val themeModeDomain by appViewModel.themeMode.collectAsStateWithLifecycle()
     val userDomain by viewModel.user.collectAsStateWithLifecycle()
     val authUiState by viewModel.authUiState.collectAsStateWithLifecycle()
 
-    // Map domain -> UI
     val themeModeUi = themeModeDomain.toUi()
-
     val userUi = userDomain?.toUi()
 
-    // Google sign-in helper (Credential Manager)
-    // Important: Credential Manager expects the *Web* OAuth client ID (server client ID),
-    // not the Android client ID. With Firebase, `default_web_client_id` is generated from
-    // app/google-services.json by the Google Services Gradle plugin.
     val credentialManager = remember(context) { CredentialManager.create(context) }
     val webClientId = remember(context) { context.getString(R.string.default_web_client_id) }
 
@@ -103,23 +99,16 @@ fun SettingsRoute(
         webClientId = webClientId
     )
 
-    if (BuildConfig.DEBUG) {
-        android.util.Log.d("AUTH", "Using default_web_client_id from google-services.json")
-    }
+    val locales = context.resources.configuration.locales
+    android.util.Log.d("LOCALE", "locales[0]=${locales[0]}, all=$locales")
 
     SettingsScreen(
-        // State
         user = userUi,
         authState = authUiState,
         themeMode = themeModeUi,
-        languageTag = languageTag,
-
-        // Navigation
         onBackClick = onBackClick,
 
-        // Account actions
         onGoogleSignInClick = { activity: Activity ->
-            // Do not fail silently; surface errors so it is clear why sign-in did not complete.
             if (webClientId.isBlank()) {
                 val message =
                     "Missing default_web_client_id. Download an updated google-services.json from Firebase and ensure Google sign-in is enabled."
@@ -150,13 +139,10 @@ fun SettingsRoute(
         onSignOutClick = viewModel::signOut,
         onDeleteAccountClick = viewModel::deleteAccount,
 
-        // Settings actions
         onThemeModeChange = { uiMode ->
-            viewModel.setThemeMode(uiMode.toDomain())
+            appViewModel.setThemeMode(uiMode.toDomain())
         },
-        onLanguageChange = viewModel::setLanguage,
 
-        // Links/actions
         privacyPolicyUrl = "https://example.com/privacy",
         termsUrl = "https://example.com/terms",
         feedbackEmail = "support@example.com",
@@ -169,25 +155,18 @@ fun SettingsRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    // State
-    user: SettingsUserUi?,                // null or anonymous => show Google sign-in button
+    user: SettingsUserUi?,
     authState: SettingsAuthUiState,
     themeMode: ThemeModeUi,
-    languageTag: String?,                 // null => System default
 
-    // Navigation
     onBackClick: () -> Unit,
 
-    // Account actions
     onGoogleSignInClick: suspend (Activity) -> Unit,
     onSignOutClick: () -> Unit,
     onDeleteAccountClick: () -> Unit,
 
-    // Settings actions
     onThemeModeChange: (ThemeModeUi) -> Unit,
-    onLanguageChange: (String?) -> Unit,
 
-    // Links/actions
     privacyPolicyUrl: String,
     termsUrl: String,
     feedbackEmail: String,
@@ -195,7 +174,7 @@ fun SettingsScreen(
     appVersionName: String,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val activity = context as? Activity
     val scope = rememberCoroutineScope()
 
@@ -206,7 +185,7 @@ fun SettingsScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Ayarlar") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
@@ -227,7 +206,7 @@ fun SettingsScreen(
         ) {
             // 1) Account
             SectionCard(
-                title = "Hesap",
+                title = stringResource(R.string.settings_section_account),
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) }
             ) {
                 authState.errorMessage?.let { message ->
@@ -241,21 +220,19 @@ fun SettingsScreen(
 
                 if (user == null || user.isAnonymous) {
                     Text(
-                        text = "Giriş yapmadan kullanabilirsin. Google ile giriş yaparsan verilerin hesabına bağlanır ve cihaz değiştirince geri alabilirsin.",
+                        text = stringResource(R.string.settings_account_guest_desc),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(Modifier.height(12.dp))
 
                     Button(
                         onClick = {
-                            scope.launch {
-                                activity?.let { onGoogleSignInClick(it) }
-                            }
+                            scope.launch { activity?.let { onGoogleSignInClick(it) } }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !authState.isInProgress
                     ) {
-                        Text("Google ile giriş")
+                        Text(stringResource(R.string.settings_google_sign_in))
                     }
                 } else {
                     Row(
@@ -264,12 +241,12 @@ fun SettingsScreen(
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
-                                text = user.email ?: "Google hesabı",
+                                text = user.email ?: stringResource(R.string.settings_google_account_fallback),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "UID: ${user.uid.take(8)}…",
+                                text = stringResource(R.string.settings_uid_short, user.uid.take(8)),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -288,7 +265,7 @@ fun SettingsScreen(
                         ) {
                             Icon(Icons.Filled.Logout, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Çıkış")
+                            Text(stringResource(R.string.settings_sign_out))
                         }
 
                         OutlinedButton(
@@ -298,12 +275,12 @@ fun SettingsScreen(
                         ) {
                             Icon(Icons.Filled.Delete, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Hesabı sil")
+                            Text(stringResource(R.string.settings_delete_account))
                         }
                     }
 
                     Text(
-                        text = "Not: Hesap silme işlemi bazı durumlarda “yeniden giriş gerekli” hatası verebilir. Böyle olursa tekrar Google ile giriş yapıp yeniden dene.",
+                        text = stringResource(R.string.settings_delete_account_hint),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -312,72 +289,43 @@ fun SettingsScreen(
 
             // 2) Appearance
             SectionCard(
-                title = "Görünüm",
+                title = stringResource(R.string.settings_section_appearance),
                 leadingIcon = { Icon(Icons.Filled.Palette, contentDescription = null) }
             ) {
                 SettingRow(
-                    title = "Tema",
+                    title = stringResource(R.string.settings_theme_title),
                     subtitle = when (themeMode) {
-                        ThemeModeUi.SYSTEM -> "Sistem"
-                        ThemeModeUi.LIGHT -> "Açık"
-                        ThemeModeUi.DARK -> "Koyu"
+                        ThemeModeUi.LIGHT -> stringResource(R.string.settings_theme_light)
+                        ThemeModeUi.DARK -> stringResource(R.string.settings_theme_dark)
                     },
                     trailing = {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            OutlinedButton(onClick = { onThemeModeChange(ThemeModeUi.SYSTEM) }) { Text("Sistem") }
-                            OutlinedButton(onClick = { onThemeModeChange(ThemeModeUi.LIGHT) }) { Text("Açık") }
-                            OutlinedButton(onClick = { onThemeModeChange(ThemeModeUi.DARK) }) { Text("Koyu") }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = themeMode == ThemeModeUi.LIGHT,
+                                onClick = { onThemeModeChange(ThemeModeUi.LIGHT) },
+                                label = { Text(stringResource(R.string.settings_theme_light)) },
+                                colors = FilterChipDefaults.filterChipColors()
+                            )
+
+                            FilterChip(
+                                selected = themeMode == ThemeModeUi.DARK,
+                                onClick = { onThemeModeChange(ThemeModeUi.DARK) },
+                                label = { Text(stringResource(R.string.settings_theme_dark)) },
+                                colors = FilterChipDefaults.filterChipColors()
+                            )
                         }
                     }
                 )
             }
 
-            // 3) Language
+            // 3) Privacy & Legal
             SectionCard(
-                title = "Dil",
-                leadingIcon = { Icon(Icons.Filled.Language, contentDescription = null) }
-            ) {
-                val currentLangLabel = when (languageTag) {
-                    null -> "Sistem"
-                    "tr" -> "Türkçe"
-                    "en" -> "English"
-                    "es" -> "Español"
-                    else -> languageTag
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Uygulama dili",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Seçili: $currentLangLabel",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { onLanguageChange(null) }) { Text("Sistem") }
-                        OutlinedButton(onClick = { onLanguageChange("tr") }) { Text("TR") }
-                        OutlinedButton(onClick = { onLanguageChange("en") }) { Text("EN") }
-                        OutlinedButton(onClick = { onLanguageChange("es") }) { Text("ES") }
-                    }
-
-                    Text(
-                        text = "Bazı cihazlarda dil değişikliği için uygulamayı yeniden açman gerekebilir.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            // 4) Privacy & Legal
-            SectionCard(
-                title = "Gizlilik & Yasal",
+                title = stringResource(R.string.settings_section_privacy_legal),
                 leadingIcon = { Icon(Icons.Filled.PrivacyTip, contentDescription = null) }
             ) {
                 SettingRow(
-                    title = "Gizlilik Politikası",
-                    subtitle = "Tarayıcıda aç",
+                    title = stringResource(R.string.settings_privacy_policy),
+                    subtitle = stringResource(R.string.settings_open_in_browser),
                     trailing = {
                         IconButton(onClick = { openUrl(context, privacyPolicyUrl) }) {
                             Icon(Icons.Filled.OpenInNew, contentDescription = null)
@@ -386,8 +334,8 @@ fun SettingsScreen(
                 )
                 Divider(Modifier.padding(vertical = 6.dp))
                 SettingRow(
-                    title = "Kullanım Şartları",
-                    subtitle = "Tarayıcıda aç",
+                    title = stringResource(R.string.settings_terms),
+                    subtitle = stringResource(R.string.settings_open_in_browser),
                     trailing = {
                         IconButton(onClick = { openUrl(context, termsUrl) }) {
                             Icon(Icons.Filled.OpenInNew, contentDescription = null)
@@ -396,19 +344,19 @@ fun SettingsScreen(
                 )
             }
 
-            // 5) App info
+            // 4) App
             SectionCard(
-                title = "Uygulama",
+                title = stringResource(R.string.settings_section_app),
                 leadingIcon = { Icon(Icons.Filled.RateReview, contentDescription = null) }
             ) {
                 SettingRow(
-                    title = "Sürüm",
+                    title = stringResource(R.string.settings_version),
                     subtitle = appVersionName,
                     trailing = {}
                 )
                 Divider(Modifier.padding(vertical = 6.dp))
                 SettingRow(
-                    title = "Geri bildirim",
+                    title = stringResource(R.string.settings_feedback),
                     subtitle = feedbackEmail,
                     trailing = {
                         IconButton(onClick = { sendFeedbackEmail(context, feedbackEmail) }) {
@@ -418,8 +366,8 @@ fun SettingsScreen(
                 )
                 Divider(Modifier.padding(vertical = 6.dp))
                 SettingRow(
-                    title = "Uygulamayı değerlendir",
-                    subtitle = "Play Store",
+                    title = stringResource(R.string.settings_rate_app),
+                    subtitle = stringResource(R.string.settings_play_store),
                     trailing = {
                         IconButton(onClick = { openPlayStore(context, appPackageName) }) {
                             Icon(Icons.Filled.OpenInNew, contentDescription = null)
@@ -433,13 +381,8 @@ fun SettingsScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Hesabı sil") },
-            text = {
-                Text(
-                    "Hesabını silmek istediğine emin misin? Bu işlem geri alınamaz.\n\n" +
-                            "Not: Bulutta tuttuğun verileri de siliyorsan ayrıca Firestore tarafında da temizleme yapman gerekebilir."
-                )
-            },
+            title = { Text(stringResource(R.string.settings_delete_account)) },
+            text = { Text(stringResource(R.string.settings_delete_account_dialog_message)) },
             confirmButton = {
                 Button(
                     enabled = !authState.isInProgress,
@@ -447,13 +390,13 @@ fun SettingsScreen(
                         showDeleteDialog = false
                         onDeleteAccountClick()
                     }
-                ) { Text("Sil") }
+                ) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
                 OutlinedButton(
                     onClick = { showDeleteDialog = false },
                     enabled = !authState.isInProgress
-                ) { Text("Vazgeç") }
+                ) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -513,12 +456,11 @@ private fun sendFeedbackEmail(context: Context, email: String) {
     try {
         context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        // No email client
+        // No email client installed.
     }
 }
 
 private fun openPlayStore(context: Context, packageName: String) {
-    // Try market:// first
     val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
     val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
 
@@ -532,22 +474,17 @@ private fun openPlayStore(context: Context, packageName: String) {
 /* -------------------- MAPPERS -------------------- */
 
 private fun ThemeMode.toUi(): ThemeModeUi = when (this) {
-    ThemeMode.SYSTEM -> ThemeModeUi.SYSTEM
     ThemeMode.LIGHT -> ThemeModeUi.LIGHT
     ThemeMode.DARK -> ThemeModeUi.DARK
 }
 
 private fun ThemeModeUi.toDomain(): ThemeMode = when (this) {
-    ThemeModeUi.SYSTEM -> ThemeMode.SYSTEM
     ThemeModeUi.LIGHT -> ThemeMode.LIGHT
     ThemeModeUi.DARK -> ThemeMode.DARK
 }
 
 /**
- * Your domain model probably looks like this:
- * data class UserInfo(val uid: String, val email: String?, val isAnonymous: Boolean)
- *
- * If your domain UserInfo is different, adjust this mapper accordingly.
+ * Adjust this mapper if your domain UserInfo differs.
  */
 private fun com.ar.domain.auth.model.UserInfo.toUi(): SettingsUserUi {
     return SettingsUserUi(

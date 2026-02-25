@@ -1,6 +1,5 @@
 package com.ar.studyapp.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -14,7 +13,7 @@ import com.ar.domain.settings.model.ThemeMode
  * ----------------------------------------------------
  */
 
-// Light mode renkleri
+// LIGHT MODE
 private val LightColors = lightColorScheme(
     primary = Color(0xFF2962FF),
     onPrimary = Color.White,
@@ -22,7 +21,7 @@ private val LightColors = lightColorScheme(
     secondary = Color(0xFF03DAC6),
     onSecondary = Color.Black,
 
-    background = Color(0xFFFDFDFD),
+    background = Color(0xFFFDFDFD),   // SABİT
     onBackground = Color(0xFF1A1A1A),
 
     surface = Color.White,
@@ -32,7 +31,7 @@ private val LightColors = lightColorScheme(
     onError = Color.White
 )
 
-// Dark mode renkleri
+// DARK MODE
 private val DarkColors = darkColorScheme(
     primary = Color(0xFF82B1FF),
     onPrimary = Color.Black,
@@ -50,24 +49,15 @@ private val DarkColors = darkColorScheme(
     onError = Color.Black
 )
 
-
-/**
- * ----------------------------------------------------
- *   MAIN THEME WRAPPER
- * ----------------------------------------------------
- */
-
 @Composable
 fun Theme(
     themeMode: ThemeMode,
     content: @Composable () -> Unit
 ) {
-    val isDark = when (themeMode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
+    val colorScheme = when (themeMode) {
+        ThemeMode.DARK -> DarkColors
+        ThemeMode.LIGHT -> LightColors
     }
-    val colorScheme = if (isDark) DarkColors else LightColors
 
     MaterialTheme(
         colorScheme = colorScheme,
@@ -76,4 +66,3 @@ fun Theme(
         content = content
     )
 }
-

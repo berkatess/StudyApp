@@ -21,15 +21,13 @@ class SettingsRepositoryImpl @Inject constructor(
 
     private object Keys {
         val THEME = stringPreferencesKey("theme_mode")
-        val LANG = stringPreferencesKey("language_tag")
     }
 
     override val themeMode: Flow<ThemeMode> =
         context.dataStore.data.map { prefs ->
             when (prefs[Keys.THEME]) {
-                "LIGHT" -> ThemeMode.LIGHT
                 "DARK" -> ThemeMode.DARK
-                else -> ThemeMode.SYSTEM
+                else -> ThemeMode.LIGHT
             }
         }
 
@@ -37,12 +35,4 @@ class SettingsRepositoryImpl @Inject constructor(
         context.dataStore.edit { it[Keys.THEME] = mode.name }
     }
 
-    override val languageTag: Flow<String?> =
-        context.dataStore.data.map { prefs -> prefs[Keys.LANG] }
-
-    override suspend fun setLanguageTag(tag: String?) {
-        context.dataStore.edit { prefs ->
-            if (tag == null) prefs.remove(Keys.LANG) else prefs[Keys.LANG] = tag
-        }
-    }
 }

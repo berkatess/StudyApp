@@ -6,43 +6,33 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
-import com.ar.domain.settings.model.ThemeMode
-import dagger.hilt.android.AndroidEntryPoint
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ar.studyapp.note.navigation.NoteNavGraph
 import com.ar.studyapp.ui.theme.Theme
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * Application entry point.
  *
- * - @AndroidEntryPoint: Required for Hilt to inject ViewModels and dependencies
- *   into this Activity.
- * - setContent: Initializes the Compose UI hierarchy.
+ * Language is resolved by Android automatically from the device locale
+ * using string resources (values/, values-tr/, ...). No in-app language override.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Align status bar / navigation bar with the content (optional)
         enableEdgeToEdge()
 
         setContent {
-            // If you have a custom Compose theme (e.g. StudyAppTheme), use it here.
-            // For now, this is wrapped with Theme,
-            // you can replace it with your own theme implementation.
-            Theme(themeMode = ThemeMode.SYSTEM) {
-                Surface(
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    // Call the navigation graph of the Note module.
-                    // From inside NoteNavGraph, the following composables will be displayed:
-                    // - NoteListRoute
-                    // - NoteDetailRoute
-                    NoteNavGraph(
-                        modifier = Modifier
-                    )
+            val vm: AppViewModel = hiltViewModel()
+            val themeMode by vm.themeMode.collectAsStateWithLifecycle()
+
+            Theme(themeMode = themeMode) {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    NoteNavGraph()
                 }
             }
         }

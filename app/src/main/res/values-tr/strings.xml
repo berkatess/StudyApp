@@ -1,0 +1,71 @@
+<resources>
+    <string name="app_name">StudyApp</string>
+
+    <!-- Ayarlar -->
+    <string name="settings_title">Ayarlar</string>
+
+    <string name="settings_section_account">Hesap</string>
+    <string name="settings_account_guest_desc">Giriş yapmadan kullanabilirsin. Google ile giriş yaparsan verilerin hesabına bağlanır ve cihaz değiştirince geri alabilirsin.</string>
+    <string name="settings_google_sign_in">Google ile giriş</string>
+    <string name="settings_google_account_fallback">Google hesabı</string>
+    <string name="settings_uid_short">UID: %1$s…</string>
+    <string name="settings_sign_out">Çıkış</string>
+    <string name="settings_delete_account">Hesabı sil</string>
+    <string name="settings_delete_account_hint">Not: Hesap silme işlemi bazı durumlarda “yeniden giriş gerekli” hatası verebilir. Böyle olursa tekrar Google ile giriş yapıp yeniden dene.</string>
+
+    <string name="settings_section_appearance">Görünüm</string>
+    <string name="settings_theme_title">Tema</string>
+    <string name="settings_theme_system">Sistem</string>
+    <string name="settings_theme_light">Açık</string>
+    <string name="settings_theme_dark">Koyu</string>
+
+    <string name="settings_section_language">Dil</string>
+    <string name="settings_app_language_title">Uygulama dili</string>
+    <string name="settings_language_selected">Seçili: %1$s</string>
+    <string name="settings_language_restart_hint">Dil değişikliği anında uygulanır. Bir sorun görürsen uygulamayı yeniden aç.</string>
+    <string name="settings_language_system">Sistem</string>
+    <string name="settings_language_tr">Türkçe</string>
+    <string name="settings_language_en">English</string>
+
+    <string name="settings_section_privacy_legal">Gizlilik &amp; Yasal</string>
+    <string name="settings_privacy_policy">Gizlilik Politikası</string>
+    <string name="settings_terms">Kullanım Şartları</string>
+    <string name="settings_open_in_browser">Tarayıcıda aç</string>
+
+    <string name="settings_section_app">Uygulama</string>
+    <string name="settings_version">Sürüm</string>
+    <string name="settings_feedback">Geri bildirim</string>
+    <string name="settings_rate_app">Uygulamayı değerlendir</string>
+    <string name="settings_play_store">Play Store</string>
+
+    <!-- Genel -->
+    <string name="common_delete">Sil</string>
+    <string name="common_cancel">Vazgeç</string>
+
+    <string name="settings_delete_account_dialog_message">Hesabını silmek istediğine emin misin? Bu işlem geri alınamaz.\n\nNot: Bulutta tuttuğun verileri de siliyorsan ayrıca Firestore tarafında da temizleme yapman gerekebilir.</string>
+
+    <string name="common_back">Geri</string>
+    <string name="common_save">Kaydet</string>
+    <string name="common_search">Ara</string>
+    <string name="common_settings">Ayarlar</string>
+    <string name="common_close_search">Aramayı kapat</string>
+    <string name="common_clear_search">Aramayı temizle</string>
+
+    <!-- Notes -->
+    <string name="notes_title">Notlar</string>
+    <string name="notes_search_placeholder">Notlarda ara…</string>
+    <string name="notes_empty">Not bulunamadı</string>
+    <string name="notes_add">Not ekle</string>
+
+    <!-- Categories -->
+    <string name="categories_title">Kategoriler</string>
+    <string name="category_name_label">Kategori adı</string>
+    <string name="categories_add">Kategori ekle</string>
+    <string name="category_none">Kategori yok</string>
+    <string name="common_saving">Kaydediliyor…</string>
+    <string name="common_update">Güncelle</string>
+
+    <!-- Dialogs -->
+    <string name="delete_note_title">Notu sil</string>
+    <string name="delete_note_message">Bu not kalıcı olarak silinsin mi?</string>
+</resources>

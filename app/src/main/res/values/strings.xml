@@ -1,3 +1,73 @@
 <resources>
     <string name="app_name">StudyApp</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+
+    <string name="settings_section_account">Account</string>
+    <string name="settings_account_guest_desc">You can use the app without signing in. If you sign in with Google, your data will be linked to your account and you can restore it when you change devices.</string>
+    <string name="settings_google_sign_in">Sign in with Google</string>
+    <string name="settings_google_account_fallback">Google account</string>
+    <string name="settings_uid_short">UID: %1$s…</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_delete_account">Delete account</string>
+    <string name="settings_delete_account_hint">Note: Account deletion may fail with a “recent login required” error. If that happens, sign in again with Google and retry.</string>
+
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+
+    <string name="settings_section_language">Language</string>
+    <string name="settings_app_language_title">App language</string>
+    <string name="settings_language_selected">Selected: %1$s</string>
+    <string name="settings_language_restart_hint">The language change is applied instantly. If something looks off, reopen the app.</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_tr">Turkish</string>
+    <string name="settings_language_en">English</string>
+
+    <string name="settings_section_privacy_legal">Privacy &amp; Legal</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_terms">Terms of Service</string>
+    <string name="settings_open_in_browser">Open in browser</string>
+
+    <string name="settings_section_app">App</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_feedback">Feedback</string>
+    <string name="settings_rate_app">Rate this app</string>
+    <string name="settings_play_store">Play Store</string>
+
+    <!-- Common -->
+    <string name="common_delete">Delete</string>
+    <string name="common_cancel">Cancel</string>
+
+    <string name="settings_delete_account_dialog_message">Are you sure you want to delete your account? This action cannot be undone.\n\nNote: If you also delete cloud data, you may need additional cleanup on the Firestore side.</string>
+
+    <string name="common_back">Back</string>
+    <string name="common_save">Save</string>
+    <string name="common_search">Search</string>
+    <string name="common_settings">Settings</string>
+    <string name="common_close_search">Close search</string>
+    <string name="common_clear_search">Clear search</string>
+
+    <!-- Notes -->
+    <string name="notes_title">Notes</string>
+    <string name="notes_search_placeholder">Search notes…</string>
+    <string name="notes_empty">No notes found</string>
+    <string name="notes_add">Add note</string>
+
+    <!-- Categories -->
+    <string name="categories_title">Categories</string>
+    <string name="category_name_label">Category name</string>
+    <string name="categories_add">Add category</string>
+    <string name="category_none">No Category</string>
+    <string name="common_saving">Saving…</string>
+    <string name="common_update">Update</string>
+
+    <!-- Dialogs -->
+    <string name="delete_note_title">Delete note</string>
+    <string name="delete_note_message">Delete this note permanently?</string>
+
+
 </resources>

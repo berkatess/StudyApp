@@ -7,8 +7,6 @@ import com.ar.domain.auth.usecase.DeleteAccountUseCase
 import com.ar.domain.auth.usecase.ObserveGoogleUserUseCase
 import com.ar.domain.auth.usecase.SignInWithGoogleIdTokenUseCase
 import com.ar.domain.auth.usecase.SignOutUseCase
-import com.ar.domain.settings.model.ThemeMode
-import com.ar.domain.settings.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,22 +20,19 @@ data class SettingsAuthUiState(
     val errorMessage: String? = null
 )
 
+/**
+ * Settings screen ViewModel.
+ *
+ * Language is NOT handled here. The app uses the device locale automatically
+ * via Android string resources (values/, values-tr/, ...).
+ */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository,
     private val observeGoogleUserUseCase: ObserveGoogleUserUseCase,
     private val signInWithGoogleIdTokenUseCase: SignInWithGoogleIdTokenUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase
 ) : ViewModel() {
-
-    val themeMode = settingsRepository.themeMode.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM
-    )
-
-    val languageTag = settingsRepository.languageTag.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5_000), null
-    )
 
     val user = observeGoogleUserUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -47,14 +42,6 @@ class SettingsViewModel @Inject constructor(
 
     fun reportAuthError(message: String) {
         _authUiState.value = SettingsAuthUiState(isInProgress = false, errorMessage = message)
-    }
-
-    fun setThemeMode(mode: ThemeMode) = viewModelScope.launch {
-        settingsRepository.setThemeMode(mode)
-    }
-
-    fun setLanguage(tag: String?) = viewModelScope.launch {
-        settingsRepository.setLanguageTag(tag)
     }
 
     fun signInWithGoogleIdToken(idToken: String) = viewModelScope.launch {

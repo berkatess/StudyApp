@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.androidx.compose.material.material)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.room.runtime.android)
+    implementation(libs.cronet.embedded)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

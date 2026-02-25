@@ -14,7 +14,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
-import com.ar.studyapp.category.CategoryManagementRoute
 import com.ar.studyapp.note.detail.NoteDetailRoute
 import com.ar.studyapp.note.list.NoteListRoute
 import com.ar.studyapp.note.list.NoteListViewModel
@@ -50,15 +49,6 @@ private fun noteDetailRoute(mode: String, noteId: String?): String {
     return "${NoteDestinations.NOTE_DETAIL}?${NoteDestinations.ARG_MODE}=$safeMode&${NoteDestinations.ARG_NOTE_ID}=$safeId"
 }
 
-private fun categoryManagementRoute(categoryId: String?): String {
-    val safeId = Uri.encode(categoryId.orEmpty())
-    return if (categoryId.isNullOrBlank()) {
-        NoteDestinations.CATEGORY_MANAGEMENT
-    } else {
-        "${NoteDestinations.CATEGORY_MANAGEMENT}?${NoteDestinations.ARG_CATEGORY_ID}=$safeId"
-    }
-}
-
 @Composable
 fun NoteNavGraph(
     modifier: Modifier = Modifier,
@@ -83,13 +73,8 @@ fun NoteNavGraph(
                         // Open create mode instantly (no waiting list state).
                         navController.navigate(noteDetailRoute(NoteDestinations.MODE_CREATE, null))
                     },
-                    onManageCategoriesClick = {
-                        navController.navigate(categoryManagementRoute(null))
-                    },
-                    onEditCategoryClick = { categoryId ->
-                        navController.navigate(categoryManagementRoute(categoryId))
-                    },
-                    onSettingsClick = { navController.navigate(NoteDestinations.SETTINGS)
+                    onSettingsClick = {
+                        navController.navigate(NoteDestinations.SETTINGS)
                     }
                 )
             }
@@ -98,21 +83,8 @@ fun NoteNavGraph(
                 SettingsRoute(onBackClick = { navController.navigateUp() })
             }
 
-
-            composable(
-                route = "${NoteDestinations.CATEGORY_MANAGEMENT}?${NoteDestinations.ARG_CATEGORY_ID}={${NoteDestinations.ARG_CATEGORY_ID}}",
-                arguments = listOf(
-                    navArgument(NoteDestinations.ARG_CATEGORY_ID) {
-                        type = NavType.StringType
-                        defaultValue = ""
-                        nullable = true
-                    }
-                )
-            ) {
-                CategoryManagementRoute(
-                    onBackClick = { navController.navigateUp() }
-                )
-            }
+            // English note: Category management is now shown as a dialog inside NoteListRoute,
+            // so we intentionally removed CATEGORY_MANAGEMENT destination from the NavGraph.
 
             composable(
                 route = "${NoteDestinations.NOTE_DETAIL}?${NoteDestinations.ARG_MODE}={${NoteDestinations.ARG_MODE}}&${NoteDestinations.ARG_NOTE_ID}={${NoteDestinations.ARG_NOTE_ID}}",

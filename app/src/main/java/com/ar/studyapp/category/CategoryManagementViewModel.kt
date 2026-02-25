@@ -8,7 +8,6 @@ import com.ar.core.network.NetworkMonitor
 import com.ar.core.result.Result
 import com.ar.domain.category.model.Category
 import com.ar.domain.category.usecase.CreateCategoryUseCase
-import com.ar.domain.category.usecase.DeleteCategoryUseCase
 import com.ar.domain.category.usecase.ObserveCategoriesUseCase
 import com.ar.domain.category.usecase.RefreshCategoriesUseCase
 import com.ar.domain.category.usecase.UpdateCategoryUseCase
@@ -81,9 +80,20 @@ class CategoryManagementViewModel @Inject constructor(
             if (!online) FetchStrategy.CACHED else preferred
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FetchStrategy.FAST)
 
-    private val pendingEditCategoryId: String? =
+    /**
+     * Existing behavior: screen can enter edit mode via navigation arg.
+     * We keep this to avoid breaking old flows.
+     */
+    private val initialEditCategoryIdFromNav: String? =
         savedStateHandle.get<String>(NoteDestinations.ARG_CATEGORY_ID)
             ?.takeIf { it.isNotBlank() }
+
+    /**
+     * NEW: Pending edit request coming from dialog usage (no navigation).
+     * English note: This enables opening the category dialog in edit mode
+     * without relying on SavedStateHandle arguments.
+     */
+    private var pendingEditCategoryId: String? = null
 
     private var didHandleInitialEdit: Boolean = false
 
@@ -101,12 +111,21 @@ class CategoryManagementViewModel @Inject constructor(
                         is Result.Loading -> CategoryUiState.Loading
                         is Result.Success -> {
                             // If we navigated here with a categoryId, auto-enter edit mode once.
-                            if (!didHandleInitialEdit && pendingEditCategoryId != null) {
-                                result.data.firstOrNull { it.id == pendingEditCategoryId }?.let { category ->
+                            if (!didHandleInitialEdit && initialEditCategoryIdFromNav != null) {
+                                result.data.firstOrNull { it.id == initialEditCategoryIdFromNav }?.let { category ->
                                     onEditCategory(category)
                                 }
                                 didHandleInitialEdit = true
                             }
+
+                            // NEW: Handle a dialog-driven edit request (if any)
+                            pendingEditCategoryId?.let { requestedId ->
+                                result.data.firstOrNull { it.id == requestedId }?.let { category ->
+                                    onEditCategory(category)
+                                    pendingEditCategoryId = null
+                                }
+                            }
+
                             CategoryUiState.Success(result.data)
                         }
                         is Result.Error -> CategoryUiState.Error(result.message ?: "Unknown error")
@@ -170,6 +189,32 @@ class CategoryManagementViewModel @Inject constructor(
         )
     }
 
+    /**
+     * NEW: Request edit mode by category id without navigation.
+     * English note: We store the id and resolve it once categories are available.
+     */
+    fun requestEditCategory(categoryId: String) {
+        pendingEditCategoryId = categoryId
+
+        // Try immediate resolution if we already have categories.
+        val current = _uiState.value
+        if (current is CategoryUiState.Success) {
+            current.categories.firstOrNull { it.id == categoryId }?.let { category ->
+                onEditCategory(category)
+                pendingEditCategoryId = null
+            }
+        }
+    }
+
+    /**
+     * NEW: Prepare form for "create" mode when opening dialog.
+     * English note: Keeps UI simple: caller can always call this before opening.
+     */
+    fun prepareForCreate() {
+        _formState.value = CategoryFormState()
+        pendingEditCategoryId = null
+    }
+
     fun onCancelEdit() {
         _formState.value = CategoryFormState()
     }
@@ -179,6 +224,15 @@ class CategoryManagementViewModel @Inject constructor(
             selectedColorHex = hex,
             errorMessage = null
         )
+    }
+
+    /**
+     * NEW: Called when dialog is dismissed.
+     * English note: We keep categories stream alive, only reset the form state.
+     */
+    fun onDialogDismiss() {
+        _formState.value = CategoryFormState()
+        pendingEditCategoryId = null
     }
 
     fun onSubmitCategory() {

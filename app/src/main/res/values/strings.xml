@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">StudyApp</string>
+    <string name="app_name">Notebook</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

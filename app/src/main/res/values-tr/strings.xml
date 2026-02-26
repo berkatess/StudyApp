@@ -68,4 +68,13 @@
     <!-- Dialogs -->
     <string name="delete_note_title">Notu sil</string>
     <string name="delete_note_message">Bu not kalıcı olarak silinsin mi?</string>
+
+    <!-- Note Detail -->
+    <string name="note_detail_title_placeholder">Başlık</string>
+    <string name="note_detail_content_placeholder">Buraya not edin</string>
+    <string name="note_detail_category_label">Kategori</string>
+    <string name="note_detail_select_category_cd">Kategori seç</string>
+    <string name="note_detail_today">Bugün</string>
+    <string name="note_detail_yesterday">Dün</string>
+
 </resources>

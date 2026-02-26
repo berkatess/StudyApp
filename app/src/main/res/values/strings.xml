@@ -69,5 +69,13 @@
     <string name="delete_note_title">Delete note</string>
     <string name="delete_note_message">Delete this note permanently?</string>
 
+    <!-- Note Detail -->
+    <string name="note_detail_title_placeholder">Title</string>
+    <string name="note_detail_content_placeholder">Take a note</string>
+    <string name="note_detail_category_label">Category</string>
+    <string name="note_detail_select_category_cd">Select category</string>
+    <string name="note_detail_today">Today</string>
+    <string name="note_detail_yesterday">Yesterday</string>
+
 
 </resources>

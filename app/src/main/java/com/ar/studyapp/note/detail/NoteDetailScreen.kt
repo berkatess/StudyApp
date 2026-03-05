@@ -195,7 +195,9 @@ fun NoteDetailScreen(
                             onValueChange = onTitleChange,
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.headlineSmall,
+                            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                                color = MaterialTheme.colorScheme.onBackground
+                            ),
                             decorationBox = { innerTextField ->
                                 Box {
                                     if (uiState.titleDraft.isBlank()) {
@@ -218,7 +220,9 @@ fun NoteDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 150.dp),
-                            textStyle = MaterialTheme.typography.bodyLarge,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onBackground
+                            ),
                             decorationBox = { innerTextField ->
                                 Box {
                                     if (uiState.contentDraft.isBlank()) {

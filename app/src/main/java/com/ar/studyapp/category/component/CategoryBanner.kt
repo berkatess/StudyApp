@@ -70,7 +70,8 @@ fun CategoryBanner(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.common_update)
+                                contentDescription = stringResource(R.string.common_update),
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         },
                         onClick = {
@@ -83,7 +84,8 @@ fun CategoryBanner(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.common_delete)
+                                contentDescription = stringResource(R.string.common_delete),
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         },
                         onClick = {

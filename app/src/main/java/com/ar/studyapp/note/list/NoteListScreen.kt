@@ -242,11 +242,13 @@ fun NoteListScreen(
                 }
 
                 is NotesUiState.Success -> {
+
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(top = 12.dp)
                     ) {
                         // NOTE: The banner must always be visible even if filtered list is empty.
                         item {
@@ -325,6 +327,7 @@ private fun NoteListItem(
         shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
+//                .copy(alpha = 0.4f)
         )
     ) {
         Column(

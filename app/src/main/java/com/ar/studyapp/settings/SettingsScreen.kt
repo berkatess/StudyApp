@@ -145,7 +145,7 @@ fun SettingsRoute(
 
         privacyPolicyUrl = "https://example.com/privacy",
         termsUrl = "https://example.com/terms",
-        feedbackEmail = "support@example.com",
+        feedbackEmail = "berkatess39@gmail.com",
         appPackageName = context.packageName,
         appVersionName = BuildConfig.VERSION_NAME
     )
@@ -245,14 +245,14 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text(
-                                text = stringResource(R.string.settings_uid_short, user.uid.take(8)),
-                                style = MaterialTheme.typography.bodySmall
-                            )
+//                            Text(
+//                                text = stringResource(R.string.settings_uid_short, user.uid.take(8)),
+//                                style = MaterialTheme.typography.bodySmall
+//                            )
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
+//                    Spacer(Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -268,22 +268,22 @@ fun SettingsScreen(
                             Text(stringResource(R.string.settings_sign_out))
                         }
 
-                        OutlinedButton(
-                            onClick = { showDeleteDialog = true },
-                            modifier = Modifier.weight(1f),
-                            enabled = !authState.isInProgress
-                        ) {
-                            Icon(Icons.Filled.Delete, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.settings_delete_account))
-                        }
+//                        OutlinedButton(
+//                            onClick = { showDeleteDialog = true },
+//                            modifier = Modifier.weight(1f),
+//                            enabled = !authState.isInProgress
+//                        ) {
+//                            Icon(Icons.Filled.Delete, contentDescription = null)
+//                            Spacer(Modifier.width(8.dp))
+//                            Text(stringResource(R.string.settings_delete_account))
+//                        }
                     }
 
-                    Text(
-                        text = stringResource(R.string.settings_delete_account_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+//                    Text(
+//                        text = stringResource(R.string.settings_delete_account_hint),
+//                        style = MaterialTheme.typography.bodySmall,
+//                        modifier = Modifier.padding(top = 8.dp)
+//                    )
                 }
             }
 

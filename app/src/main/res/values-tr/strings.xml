@@ -11,7 +11,7 @@
     <string name="settings_uid_short">UID: %1$s…</string>
     <string name="settings_sign_out">Çıkış</string>
     <string name="settings_delete_account">Hesabı sil</string>
-    <string name="settings_delete_account_hint">Not: Hesap silme işlemi bazı durumlarda “yeniden giriş gerekli” hatası verebilir. Böyle olursa tekrar Google ile giriş yapıp yeniden dene.</string>
+    <string name="settings_delete_account_hint">Not: Hesap silme işlemi bazı durumlarda “yeniden giriş gerekli” hatası verebilir. Böyle olursa tekrar Google ile giriş yapıp yeniden deneyiniz.</string>
 
     <string name="settings_section_appearance">Görünüm</string>
     <string name="settings_theme_title">Tema</string>

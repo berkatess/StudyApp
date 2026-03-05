@@ -24,9 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ar.domain.category.model.Category
+import com.ar.studyapp.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +45,7 @@ fun CategoryDropdown(
         categories.firstOrNull { it.id == selectedCategoryId }
     }
 
-    val selectedName = selectedCategory?.name ?: "Select Category"
+    val selectedName = selectedCategory?.name ?: stringResource(R.string.note_detail_select_category_cd)
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -54,7 +56,7 @@ fun CategoryDropdown(
             value = selectedName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Category") },
+            label = { Text(stringResource(R.string.note_detail_category_label)) },
             leadingIcon = {
                 // Show color dot for selected category
                 selectedCategory?.let { category ->
@@ -79,7 +81,7 @@ fun CategoryDropdown(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ColorDot(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.width(10.dp))
-                        Text("No Category")
+                        Text(stringResource(R.string.category_none))
                     }
                 },
                 onClick = {

@@ -13,6 +13,8 @@ import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
 import com.ar.domain.note.usecase.DeleteNoteUseCase
 import com.ar.domain.note.usecase.GetNotesUseCase
+import com.ar.studyapp.R
+import com.ar.studyapp.error.toMessageResOrNull
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
 
 data class NoteListItemUiModel(
     val id: String,
@@ -44,7 +47,7 @@ sealed interface NotesUiState {
         val searchQuery: String
     ) : NotesUiState
 
-    data class Error(val message: String) : NotesUiState
+    data class Error(val messageRes: Int) : NotesUiState
 }
 
 private data class CombinedState(
@@ -194,14 +197,16 @@ class NoteListViewModel @Inject constructor(
 
                 if (state.notesResult is Result.Error) {
                     _uiState.value = NotesUiState.Error(
-                        state.notesResult.message ?: "Failed to load notes"
+                        state.notesResult.error.toMessageResOrNull()
+                            ?: R.string.note_error_load_failed_fallback
                     )
                     return@collectLatest
                 }
 
                 if (state.categoriesResult is Result.Error) {
                     _uiState.value = NotesUiState.Error(
-                        state.categoriesResult.message ?: "Failed to load categories"
+                        state.categoriesResult.error.toMessageResOrNull()
+                            ?: R.string.category_error_load_failed_fallback
                     )
                     return@collectLatest
                 }

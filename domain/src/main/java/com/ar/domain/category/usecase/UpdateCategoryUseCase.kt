@@ -3,6 +3,7 @@ package com.ar.domain.category.usecase
 import com.ar.core.result.Result
 import com.ar.domain.category.model.Category
 import com.ar.domain.category.repository.CategoryRepository
+import com.ar.domain.error.CategoryError
 import javax.inject.Inject
 
 class UpdateCategoryUseCase @Inject constructor(
@@ -17,11 +18,11 @@ class UpdateCategoryUseCase @Inject constructor(
     ): Result<Category> {
 
         if (id.isBlank()) {
-            return Result.Error("Category id cannot be empty")
+            return Result.Error(error = CategoryError.EmptyCategoryId)
         }
 
         if (name.isBlank()) {
-            return Result.Error("Category name cannot be empty")
+            return Result.Error(error = CategoryError.EmptyCategoryName)
         }
 
         return repository.updateCategory(

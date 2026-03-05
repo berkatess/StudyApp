@@ -13,6 +13,7 @@ import com.ar.data.sync.SyncState
 import com.ar.domain.auth.repository.AuthRepository
 import com.ar.domain.category.model.Category
 import com.ar.domain.category.repository.CategoryRepository
+import com.ar.domain.error.CategoryError
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -80,7 +81,7 @@ class CategoryRepositoryImpl @Inject constructor(
             cacheRemoteCategoriesAsSynced(remoteDomain)
         }.fold(
             onSuccess = { Result.Success(Unit) },
-            onFailure = { e -> Result.Error("Failed to refresh categories", e) }
+            onFailure = { e -> Result.Error(error = CategoryError.RefreshFailed, throwable = e) }
         )
     }
 
@@ -96,12 +97,12 @@ class CategoryRepositoryImpl @Inject constructor(
                 // 2) If offline or not signed in, we cannot fetch remote
                 val uid = signedInUserIdOrNull()
                 if (uid == null || !networkMonitor.isOnlineNow()) {
-                    return@withContext Result.Error("Category not found locally")
+                    return@withContext Result.Error(error = CategoryError.NotFoundLocal)
                 }
 
                 // 3) Remote one-shot fetch (only if needed)
                 val remotePair = remote.getCategoryById(uid, id)
-                    ?: return@withContext Result.Error("Category not found")
+                    ?: return@withContext Result.Error(error = CategoryError.NotFound)
 
                 val (docId, dto) = remotePair
                 val domain = dto.toDomain(docId)
@@ -124,7 +125,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 // Fallback attempt to local (in case of race)
                 val localEntity = local.getCategoryById(id)
                 if (localEntity != null) Result.Success(localEntity.toDomain())
-                else Result.Error("Failed to load category", e)
+                else Result.Error(error = CategoryError.LoadFailedSingle, throwable = e)
             }
         }
 
@@ -142,7 +143,7 @@ class CategoryRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             val localDomain = getCategoriesLocalOnce()
             if (localDomain.isNotEmpty()) Result.Success(localDomain)
-            else Result.Error("Failed to load categories", e)
+            else Result.Error(error = CategoryError.LoadFailedList, throwable = e)
         }
     }
 
@@ -173,7 +174,7 @@ class CategoryRepositoryImpl @Inject constructor(
 
             Result.Success(category)
         } catch (e: Exception) {
-            Result.Error("Category could not be created", e)
+            Result.Error(error = CategoryError.CreateFailed, throwable = e)
         }
     }
 
@@ -201,7 +202,7 @@ class CategoryRepositoryImpl @Inject constructor(
 
             Result.Success(category)
         } catch (e: Exception) {
-            Result.Error("Category could not be updated", e)
+            Result.Error(error = CategoryError.UpdateFailed, throwable = e)
         }
     }
 
@@ -222,7 +223,7 @@ class CategoryRepositoryImpl @Inject constructor(
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error("Failed to delete category", e)
+            Result.Error(error = CategoryError.DeleteFailed, throwable = e)
         }
     }
 
@@ -271,7 +272,7 @@ class CategoryRepositoryImpl @Inject constructor(
         getCategoriesLocal()
             .map<List<Category>, Result<List<Category>>> { Result.Success(it) }
             .onStart { emit(Result.Loading) }
-            .catch { e -> emit(Result.Error("Failed to load categories locally", e)) }
+            .catch { e -> emit(Result.Error(error = CategoryError.LoadLocalFailed, throwable = e)) }
             .flowOn(dispatchers.io)
 
     private fun observeCategoriesFast(): Flow<Result<List<Category>>> = channelFlow {
@@ -297,7 +298,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 if (e !is FirebaseFirestoreException ||
                     e.code != FirebaseFirestoreException.Code.PERMISSION_DENIED
                 ) {
-                    send(Result.Error("Failed to observe categories from remote", e))
+                    send(Result.Error(error = CategoryError.ObserveRemoteFailed, throwable = e))
                 }
             }
         }
@@ -321,7 +322,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 .onStart { emit(Result.Loading) }
         )
     }.catch { e ->
-        emit(Result.Error("Failed to load categories from remote", e))
+        emit(Result.Error(error = CategoryError.LoadRemoteFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
     private fun observeCategoriesFallback(saveToLocal: Boolean): Flow<Result<List<Category>>> =
@@ -346,7 +347,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 }
             }
         }.catch { e ->
-            emit(Result.Error("Failed to load categories (remote + local fallback)", e))
+            emit(Result.Error(error = CategoryError.LoadFallbackFailed, throwable = e))
         }.flowOn(dispatchers.io)
 
     private fun observeCategoriesSynced(): Flow<Result<List<Category>>> = flow {
@@ -363,6 +364,6 @@ class CategoryRepositoryImpl @Inject constructor(
             emit(Result.Success(domain))
         }
     }.catch { e ->
-        emit(Result.Error("Failed to sync categories", e))
+        emit(Result.Error(error = CategoryError.SyncFailed, throwable = e))
     }.flowOn(dispatchers.io)
 }

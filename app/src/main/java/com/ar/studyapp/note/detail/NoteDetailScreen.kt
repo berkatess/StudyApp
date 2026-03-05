@@ -150,7 +150,9 @@ fun NoteDetailScreen(
 
                 is NoteDetailUiState.Error -> {
                     Text(
-                        text = uiState.message,
+                        text = uiState.messageArg?.let { arg ->
+                            stringResource(uiState.messageRes, arg)
+                        } ?: stringResource(uiState.messageRes),
                         modifier = Modifier.align(Alignment.Center),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium
@@ -236,10 +238,10 @@ fun NoteDetailScreen(
 //                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 //                        }
 
-                        if (uiState.saveError != null) {
+                        if (uiState.saveErrorRes != null) {
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = uiState.saveError,
+                                text = stringResource(uiState.saveErrorRes),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyMedium
                             )

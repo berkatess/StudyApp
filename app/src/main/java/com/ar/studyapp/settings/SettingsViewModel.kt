@@ -1,5 +1,6 @@
 package com.ar.studyapp.settings
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ar.core.result.Result
@@ -7,6 +8,8 @@ import com.ar.domain.auth.usecase.DeleteAccountUseCase
 import com.ar.domain.auth.usecase.ObserveGoogleUserUseCase
 import com.ar.domain.auth.usecase.SignInWithGoogleIdTokenUseCase
 import com.ar.domain.auth.usecase.SignOutUseCase
+import com.ar.studyapp.R
+import com.ar.studyapp.error.toMessageResOrNull
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,7 +20,7 @@ import javax.inject.Inject
 
 data class SettingsAuthUiState(
     val isInProgress: Boolean = false,
-    val errorMessage: String? = null
+    @StringRes val errorMessageRes: Int? = null
 )
 
 /**
@@ -40,8 +43,15 @@ class SettingsViewModel @Inject constructor(
     private val _authUiState = MutableStateFlow(SettingsAuthUiState())
     val authUiState: StateFlow<SettingsAuthUiState> = _authUiState
 
-    fun reportAuthError(message: String) {
-        _authUiState.value = SettingsAuthUiState(isInProgress = false, errorMessage = message)
+    fun reportAuthError(@StringRes messageRes: Int) {
+        _authUiState.value = SettingsAuthUiState(
+            isInProgress = false,
+            errorMessageRes = messageRes
+        )
+    }
+
+    fun clearAuthError() {
+        _authUiState.value = _authUiState.value.copy(errorMessageRes = null)
     }
 
     fun signInWithGoogleIdToken(idToken: String) = viewModelScope.launch {
@@ -49,10 +59,13 @@ class SettingsViewModel @Inject constructor(
 
         when (val result = signInWithGoogleIdTokenUseCase(idToken)) {
             is Result.Success -> _authUiState.value = SettingsAuthUiState(isInProgress = false)
+
             is Result.Error -> _authUiState.value = SettingsAuthUiState(
                 isInProgress = false,
-                errorMessage = result.message ?: "Google sign-in failed"
+                errorMessageRes = result.error.toMessageResOrNull()
+                    ?: R.string.auth_error_google_sign_in_failed
             )
+
             Result.Loading -> Unit
         }
     }
@@ -62,10 +75,13 @@ class SettingsViewModel @Inject constructor(
 
         when (val result = signOutUseCase(Unit)) {
             is Result.Success -> _authUiState.value = SettingsAuthUiState(isInProgress = false)
+
             is Result.Error -> _authUiState.value = SettingsAuthUiState(
                 isInProgress = false,
-                errorMessage = result.message ?: "Sign out failed"
+                errorMessageRes = result.error.toMessageResOrNull()
+                    ?: R.string.auth_error_sign_out_failed
             )
+
             Result.Loading -> Unit
         }
     }
@@ -75,10 +91,13 @@ class SettingsViewModel @Inject constructor(
 
         when (val result = deleteAccountUseCase(Unit)) {
             is Result.Success -> _authUiState.value = SettingsAuthUiState(isInProgress = false)
+
             is Result.Error -> _authUiState.value = SettingsAuthUiState(
                 isInProgress = false,
-                errorMessage = result.message ?: "Delete account failed"
+                errorMessageRes = result.error.toMessageResOrNull()
+                    ?: R.string.auth_error_delete_account_failed
             )
+
             Result.Loading -> Unit
         }
     }

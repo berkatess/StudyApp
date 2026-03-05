@@ -113,7 +113,7 @@ fun SettingsRoute(
                 val message =
                     "Missing default_web_client_id. Download an updated google-services.json from Firebase and ensure Google sign-in is enabled."
                 android.util.Log.e("AUTH", message)
-                viewModel.reportAuthError(message)
+                viewModel.reportAuthError(R.string.auth_error_missing_web_client_id)
                 return@SettingsScreen
             }
 
@@ -121,7 +121,7 @@ fun SettingsRoute(
                 .getOrElse {
                     val message = "Failed to obtain Google ID token. ${it.message ?: ""}".trim()
                     android.util.Log.e("AUTH", message, it)
-                    viewModel.reportAuthError(message)
+                    viewModel.reportAuthError(R.string.auth_error_google_id_token_fetch_failed)
                     return@SettingsScreen
                 }
 
@@ -129,7 +129,7 @@ fun SettingsRoute(
                 val message =
                     "Google ID token is empty. Check that you are using the Web client ID (default_web_client_id) and that SHA-1 is configured in Firebase/Google Cloud."
                 android.util.Log.e("AUTH", message)
-                viewModel.reportAuthError(message)
+                viewModel.reportAuthError(R.string.auth_error_google_id_token_empty)
                 return@SettingsScreen
             }
 
@@ -209,9 +209,9 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_section_account),
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null) }
             ) {
-                authState.errorMessage?.let { message ->
+                authState.errorMessageRes?.let { resId ->
                     Text(
-                        text = message,
+                        text = stringResource(resId),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium
                     )

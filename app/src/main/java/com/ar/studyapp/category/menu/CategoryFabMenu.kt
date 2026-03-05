@@ -23,9 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ar.domain.category.model.Category
+import com.ar.studyapp.R
 
 @Composable
 fun CategoryFabMenu(
@@ -41,11 +43,11 @@ fun CategoryFabMenu(
     androidx.compose.foundation.layout.Box(modifier = modifier) {
         ExtendedFloatingActionButton(
             onClick = { expanded = true },
-            text = { Text("Category") },
+            text = { Text(stringResource(R.string.note_detail_category_label)) },
             icon = {
                 androidx.compose.material3.Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Category"
+                    contentDescription = stringResource(R.string.note_detail_category_label)
                 )
             }
         )
@@ -59,7 +61,7 @@ fun CategoryFabMenu(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ColorDot(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.width(10.dp))
-                        Text("No Category")
+                        Text(stringResource(R.string.category_none))
                     }
                 },
                 onClick = {

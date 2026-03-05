@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">StudyApp</string>
+    <string name="app_name">Not Defteri</string>
 
     <!-- Ayarlar -->
     <string name="settings_title">Ayarlar</string>
@@ -76,5 +76,68 @@
     <string name="note_detail_select_category_cd">Kategori seç</string>
     <string name="note_detail_today">Bugün</string>
     <string name="note_detail_yesterday">Dün</string>
+
+    <string name="common_close">Kapat</string>
+
+    <string name="categories_create_new">Yeni kategori oluştur</string>
+    <string name="categories_edit">Kategoriyi düzenle</string>
+    <string name="categories_name_label">Kategori adı</string>
+    <string name="common_color">Renk</string>
+
+    <string name="common_create">Oluştur</string>
+
+    <string name="categories_existing">Mevcut kategoriler</string>
+    <string name="categories_empty">Henüz kategori yok</string>
+
+
+
+    <!-- Note hataları (domain/data -> UI mapping) -->
+    <string name="note_error_empty_id">Not kimliği boş olamaz</string>
+    <string name="note_error_empty_title_and_content">Başlık ve içerik boş olamaz</string>
+    <string name="note_error_not_found">Not bulunamadı</string>
+    <string name="note_error_not_found_with_id">Not bulunamadı: %1$s</string>
+    <string name="note_error_load_local_failed">Notlar yerelden yüklenemedi</string>
+    <string name="note_error_load_remote_failed">Notlar uzaktan yüklenemedi</string>
+    <string name="note_error_load_fallback_failed">Notlar yüklenemedi (uzak + yerel yedek)</string>
+    <string name="note_error_no_internet">İnternet bağlantısı yok</string>
+    <string name="note_error_sync_failed">Notlar senkronize edilemedi</string>
+    <string name="note_error_save_local_failed">Not yerel olarak kaydedilemedi</string>
+    <string name="note_error_update_failed">Not güncellenemedi</string>
+    <string name="note_error_delete_failed">Not silinemedi</string>
+    <string name="note_error_refresh_failed">Notlar yenilenemedi</string>
+    <string name="note_error_sign_in_required_remote_fetch">Uzaktan veri almak için giriş yapılması gerekiyor</string>
+
+    <string name="category_error_refresh_failed">Kategoriler yenilenemedi.</string>
+    <string name="category_error_not_found_local">Kategori yerel depoda bulunamadı.</string>
+    <string name="category_error_not_found">Kategori bulunamadı.</string>
+    <string name="category_error_load_failed_single">Kategori yüklenemedi.</string>
+    <string name="category_error_load_failed">Kategoriler yüklenemedi.</string>
+    <string name="category_error_create_failed">Kategori oluşturulamadı.</string>
+    <string name="category_error_update_failed">Kategori güncellenemedi.</string>
+    <string name="category_error_delete_failed">Kategori silinemedi.</string>
+    <string name="category_error_load_local_failed">Kategoriler yerel depodan yüklenemedi.</string>
+    <string name="category_error_observe_remote_failed">Kategoriler uzak kaynaktan izlenemedi.</string>
+    <string name="category_error_sign_in_required_remote_fetch">Kategorileri almak için giriş yapmanız gerekiyor.</string>
+    <string name="category_error_load_remote_failed">Kategoriler uzak kaynaktan yüklenemedi.</string>
+    <string name="category_error_load_fallback_failed">Kategoriler yedek kaynaktan yüklenemedi.</string>
+    <string name="category_error_sync_failed">Kategoriler senkronize edilemedi.</string>
+
+    <!-- UI fallback (geçiş süreci) -->
+    <string name="note_error_load_failed_fallback">Notlar yüklenemedi</string>
+    <string name="note_error_save_failed_fallback">Not kaydedilemedi</string>
+    <string name="category_error_load_failed_fallback">Kategoriler yüklenemedi</string>
+
+    <!-- Genel hatalar -->
+    <string name="common_error_unknown">Bir şeyler ters gitti</string>
+    <string name="common_error_no_internet">İnternet bağlantısı yok</string>
+    <string name="common_error_sign_in_required">Giriş yapılması gerekiyor</string>
+
+    <string name="auth_error_empty_google_id_token">Google ID token boş olamaz</string>
+    <string name="auth_error_google_sign_in_failed">Google ile giriş başarısız oldu</string>
+    <string name="auth_error_sign_out_failed">Çıkış yapılamadı</string>
+    <string name="auth_error_delete_account_failed">Hesap silinemedi</string>
+    <string name="auth_error_missing_web_client_id">Google giriş yapılandırması eksik</string>
+    <string name="auth_error_google_id_token_fetch_failed">Google ID token alınamadı</string>
+    <string name="auth_error_google_id_token_empty">Google ID token boş</string>
 
 </resources>

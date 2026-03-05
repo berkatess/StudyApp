@@ -16,22 +16,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ar.domain.category.model.Category
+import com.ar.studyapp.R
 import com.ar.studyapp.theme.CategoryColors
 import com.ar.studyapp.theme.toHexString
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.ui.window.Dialog
 
 /**
- * Route katmanı:
- * - ViewModel'i Hilt ile alır
- * - StateFlow'ları collect eder
- * - Saf UI fonksiyonuna state + callback'leri taşır
+ * Route layer:
+ * - Obtains the ViewModel with Hilt
+ * - Collects StateFlows
+ * - Passes state + callbacks to the pure UI function
  */
 @Composable
 fun CategoryManagementRoute(
@@ -87,9 +89,9 @@ fun CategoryManagementDialogRoute(
 }
 
 /**
- * Saf UI:
- * - Ne gösterileceğine (loading, error, liste) karar verir.
- * - Form inputlarını gösterir.
+ * Pure UI:
+ * - Decides what to show (loading, error, list).
+ * - Displays form inputs.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,12 +108,12 @@ fun CategoryManagementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Categories") },
+                title = { Text(stringResource(R.string.categories_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 }
@@ -174,19 +176,23 @@ fun CategoryManagementDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (formState.editingCategoryId.isNullOrBlank()) "Create new category" else "Edit category",
+                        text = if (formState.editingCategoryId.isNullOrBlank()) {
+                            stringResource(R.string.categories_create_new)
+                        } else {
+                            stringResource(R.string.categories_edit)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close"
+                            contentDescription = stringResource(R.string.common_close)
                         )
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 CategoryManagementContent(
                     uiState = uiState,
@@ -242,7 +248,7 @@ private fun CategoryManagementContent(
         OutlinedTextField(
             value = formState.name,
             onValueChange = onNameChange,
-            label = { Text("Category name") },
+            label = { Text(stringResource(R.string.categories_name_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -260,7 +266,7 @@ private fun CategoryManagementContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Color",
+            text = stringResource(R.string.common_color),
             style = MaterialTheme.typography.bodyMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -289,7 +295,7 @@ private fun CategoryManagementContent(
             // if editMode show cancel button
             if (!formState.editingCategoryId.isNullOrBlank()) {
                 TextButton(onClick = onCancelEdit) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
@@ -304,9 +310,15 @@ private fun CategoryManagementContent(
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Saving...")
+                    Text(stringResource(R.string.common_saving))
                 } else {
-                    Text(if (formState.editingCategoryId.isNullOrBlank()) "Create" else "Update")
+                    Text(
+                        if (formState.editingCategoryId.isNullOrBlank()) {
+                            stringResource(R.string.common_create)
+                        } else {
+                            stringResource(R.string.common_update)
+                        }
+                    )
                 }
             }
         }
@@ -315,7 +327,7 @@ private fun CategoryManagementContent(
 
         // CategoryList
         Text(
-            text = "Existing categories",
+            text = stringResource(R.string.categories_existing),
             style = MaterialTheme.typography.titleMedium
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -344,7 +356,7 @@ private fun CategoryManagementContent(
             is CategoryUiState.Success -> {
                 if (uiState.categories.isEmpty()) {
                     Text(
-                        text = "No categories yet",
+                        text = stringResource(R.string.categories_empty),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 } else {

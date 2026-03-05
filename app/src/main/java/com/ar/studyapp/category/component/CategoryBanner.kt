@@ -22,8 +22,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ar.domain.category.model.Category
+import com.ar.studyapp.R
 import com.ar.studyapp.note.list.components.CategoryChip
 
 @Composable
@@ -64,11 +66,11 @@ fun CategoryBanner(
                     onDismissRequest = { menuForCategoryId = null }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Update") },
+                        text = { Text(stringResource(R.string.common_update)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Update"
+                                contentDescription = stringResource(R.string.common_update)
                             )
                         },
                         onClick = {
@@ -77,11 +79,11 @@ fun CategoryBanner(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.common_delete)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete"
+                                contentDescription = stringResource(R.string.common_delete)
                             )
                         },
                         onClick = {
@@ -97,7 +99,7 @@ fun CategoryBanner(
         item {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add category",
+                contentDescription = stringResource(R.string.categories_add),
                 modifier = Modifier
                     .size(24.dp)
                     // Disable ripple/pressed indication to keep the icon "plain".

@@ -77,5 +77,68 @@
     <string name="note_detail_today">Today</string>
     <string name="note_detail_yesterday">Yesterday</string>
 
+    <string name="common_close">Close</string>
+
+    <string name="categories_create_new">Create new category</string>
+    <string name="categories_edit">Edit category</string>
+    <string name="categories_name_label">Category name</string>
+    <string name="common_color">Color</string>
+
+    <string name="common_create">Create</string>
+
+    <string name="categories_existing">Existing categories</string>
+    <string name="categories_empty">No categories yet</string>
+
+
+
+
+    <!-- Note errors (domain/data -> UI mapping) -->
+    <string name="note_error_empty_id">Note id cannot be empty</string>
+    <string name="note_error_empty_title_and_content">Title and content cannot be empty</string>
+    <string name="note_error_not_found">Note not found</string>
+    <string name="note_error_not_found_with_id">Note not found: %1$s</string>
+    <string name="note_error_load_local_failed">Failed to load notes locally</string>
+    <string name="note_error_load_remote_failed">Failed to load notes from remote</string>
+    <string name="note_error_load_fallback_failed">Failed to load notes (remote + local fallback)</string>
+    <string name="note_error_no_internet">No internet connection</string>
+    <string name="note_error_sync_failed">Failed to sync notes</string>
+    <string name="note_error_save_local_failed">Failed to save note locally</string>
+    <string name="note_error_update_failed">Failed to update note</string>
+    <string name="note_error_delete_failed">Failed to delete note</string>
+    <string name="note_error_refresh_failed">Failed to refresh notes</string>
+    <string name="note_error_sign_in_required_remote_fetch">Sign-in required for remote fetch</string>
+
+    <string name="category_error_refresh_failed">Failed to refresh categories.</string>
+    <string name="category_error_not_found_local">Category not found in local storage.</string>
+    <string name="category_error_not_found">Category not found.</string>
+    <string name="category_error_load_failed_single">Failed to load category.</string>
+    <string name="category_error_load_failed">Failed to load categories.</string>
+    <string name="category_error_create_failed">Failed to create category.</string>
+    <string name="category_error_update_failed">Failed to update category.</string>
+    <string name="category_error_delete_failed">Failed to delete category.</string>
+    <string name="category_error_load_local_failed">Failed to load categories from local storage.</string>
+    <string name="category_error_observe_remote_failed">Failed to observe categories from remote source.</string>
+    <string name="category_error_sign_in_required_remote_fetch">Sign in is required to fetch categories.</string>
+    <string name="category_error_load_remote_failed">Failed to load categories from remote source.</string>
+    <string name="category_error_load_fallback_failed">Failed to load categories from fallback source.</string>
+    <string name="category_error_sync_failed">Failed to synchronize categories.</string>
+
+    <!-- UI fallbacks (during migration) -->
+    <string name="note_error_load_failed_fallback">Failed to load notes</string>
+    <string name="note_error_save_failed_fallback">Failed to save note</string>
+    <string name="category_error_load_failed_fallback">Failed to load categories</string>
+
+    <!-- Common errors -->
+    <string name="common_error_unknown">Something went wrong</string>
+    <string name="common_error_no_internet">No internet connection</string>
+    <string name="common_error_sign_in_required">Sign-in required</string>
+
+    <string name="auth_error_empty_google_id_token">Google ID token cannot be empty</string>
+    <string name="auth_error_google_sign_in_failed">Google sign-in failed</string>
+    <string name="auth_error_sign_out_failed">Sign out failed</string>
+    <string name="auth_error_delete_account_failed">Delete account failed</string>
+    <string name="auth_error_missing_web_client_id">Missing Google sign-in configuration</string>
+    <string name="auth_error_google_id_token_fetch_failed">Failed to obtain Google ID token</string>
+    <string name="auth_error_google_id_token_empty">Google ID token is empty</string>
 
 </resources>

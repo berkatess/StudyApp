@@ -4,6 +4,7 @@ import com.ar.core.result.Result
 import com.ar.core.sync.CategorySyncScheduler
 import com.ar.core.sync.NoteSyncScheduler
 import com.ar.core.usecase.BaseUseCase
+import com.ar.domain.auth.error.AuthError
 import com.ar.domain.auth.repository.GoogleAuthRepository
 import javax.inject.Inject
 
@@ -16,7 +17,7 @@ class SignInWithGoogleIdTokenUseCase @Inject constructor(
     override suspend fun execute(params: String): Result<Unit> {
         val token = params.trim()
         if (token.isEmpty()) {
-            return Result.Error("Google ID token cannot be empty")
+            return Result.Error(error = AuthError.EmptyGoogleIdToken)
         }
 
         googleAuthRepository.signInWithGoogleIdToken(token)

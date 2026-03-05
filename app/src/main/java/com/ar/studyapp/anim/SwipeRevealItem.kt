@@ -18,9 +18,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.ar.studyapp.R
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -62,7 +64,6 @@ fun SwipeRevealItem(
         }
     }
 
-
     val seamPx = with(density) { 1.dp.toPx() }
 
     Box(
@@ -97,7 +98,7 @@ fun SwipeRevealItem(
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
-                contentDescription = "Delete",
+                contentDescription = stringResource(R.string.common_delete),
                 tint = cs.onErrorContainer
             )
         }

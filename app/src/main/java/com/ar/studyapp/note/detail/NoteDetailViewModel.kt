@@ -7,6 +7,8 @@ import com.ar.domain.note.model.Note
 import com.ar.domain.note.usecase.CreateNoteUseCase
 import com.ar.domain.note.usecase.UpdateNoteUseCase
 import com.ar.studyapp.note.navigation.NoteDestinations
+import com.ar.studyapp.R
+import com.ar.studyapp.error.toMessageResOrNull
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import javax.inject.Inject
@@ -16,7 +18,10 @@ import kotlinx.coroutines.launch
 
 sealed interface NoteDetailUiState {
     object Loading : NoteDetailUiState
-    data class Error(val message: String) : NoteDetailUiState
+    data class Error(
+        val messageRes: Int,
+        val messageArg: String? = null
+    ) : NoteDetailUiState
 
     data class Success(
         val note: Note,
@@ -25,7 +30,7 @@ sealed interface NoteDetailUiState {
         val contentDraft: String,
         val selectedCategoryId: String? = null,
         val isSaving: Boolean = false,
-        val saveError: String? = null,
+        val saveErrorRes: Int? = null,
         val isDirty: Boolean = false,
         val canSave: Boolean = false
     ) : NoteDetailUiState
@@ -81,7 +86,10 @@ class NoteDetailViewModel @Inject constructor(
     fun showNotFound(noteId: String) {
         val current = _uiState.value
         if (current is NoteDetailUiState.Success && current.isDirty) return
-        _uiState.value = NoteDetailUiState.Error("Note not found: $noteId")
+        _uiState.value = NoteDetailUiState.Error(
+            messageRes = R.string.note_error_not_found_with_id,
+            messageArg = noteId
+        )
     }
 
     /**
@@ -110,7 +118,7 @@ class NoteDetailViewModel @Inject constructor(
 
         if (current.isDirty) {
             // Keep drafts, only refresh backing note reference.
-            _uiState.value = current.copy(note = note, saveError = null)
+            _uiState.value = current.copy(note = note, saveErrorRes = null)
             return
         }
 
@@ -120,7 +128,7 @@ class NoteDetailViewModel @Inject constructor(
             titleDraft = note.title,
             contentDraft = note.content,
             selectedCategoryId = note.categoryId,
-            saveError = null,
+            saveErrorRes = null,
             canSave = false
         )
     }
@@ -173,7 +181,7 @@ class NoteDetailViewModel @Inject constructor(
                 titleDraft = newTitle,
                 contentDraft = current.contentDraft
             ),
-            saveError = null
+            saveErrorRes = null
         )
     }
 
@@ -195,7 +203,7 @@ class NoteDetailViewModel @Inject constructor(
                 titleDraft = current.titleDraft,
                 contentDraft = newContent
             ),
-            saveError = null
+            saveErrorRes = null
         )
     }
 
@@ -217,7 +225,7 @@ class NoteDetailViewModel @Inject constructor(
                 titleDraft = current.titleDraft,
                 contentDraft = current.contentDraft
             ),
-            saveError = null
+            saveErrorRes = null
         )
     }
 
@@ -226,7 +234,7 @@ class NoteDetailViewModel @Inject constructor(
         if (!current.canSave || current.isSaving) return
 
         viewModelScope.launch {
-            _uiState.value = current.copy(isSaving = true, saveError = null)
+            _uiState.value = current.copy(isSaving = true, saveErrorRes = null)
 
             val now = Instant.now()
 
@@ -262,7 +270,7 @@ class NoteDetailViewModel @Inject constructor(
                         isSaving = false,
                         isDirty = false,
                         canSave = false,
-                        saveError = null
+                        saveErrorRes = null
                     )
 
                     // Notify caller to switch route into edit mode with real id.
@@ -272,7 +280,8 @@ class NoteDetailViewModel @Inject constructor(
                 is Result.Error -> {
                     _uiState.value = current.copy(
                         isSaving = false,
-                        saveError = result.message ?: "Failed to save note",
+                        saveErrorRes = result.error.toMessageResOrNull()
+                            ?: R.string.note_error_save_failed_fallback,
                         canSave = canSave(
                             isNew = current.isNew,
                             isDirty = current.isDirty,

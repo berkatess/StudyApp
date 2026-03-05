@@ -28,10 +28,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.ar.studyapp.R
 import com.ar.studyapp.anim.SwipeRevealItem
 import com.ar.studyapp.category.CategoryManagementDialogRoute
 import com.ar.studyapp.category.CategoryManagementViewModel
@@ -150,7 +152,7 @@ fun NoteListScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Close search"
+                                contentDescription = stringResource(R.string.common_close_search)
                             )
                         }
                     }
@@ -164,7 +166,7 @@ fun NoteListScreen(
                                 .fillMaxSize()
                                 .padding(end = 8.dp)
                                 .focusRequester(focusRequester),
-                            placeholder = { Text("Search notes...") },
+                            placeholder = { Text(stringResource(R.string.notes_search_placeholder)) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
@@ -180,7 +182,7 @@ fun NoteListScreen(
                             )
                         )
                     } else {
-                        Text("Notes")
+                        Text(stringResource(R.string.notes_title))
                     }
                 },
                 actions = {
@@ -188,13 +190,13 @@ fun NoteListScreen(
                         IconButton(onClick = { searchActive = true }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = "Search"
+                                contentDescription = stringResource(R.string.common_search)
                             )
                         }
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings"
+                                contentDescription = stringResource(R.string.common_settings)
                             )
                         }
                     } else {
@@ -207,7 +209,7 @@ fun NoteListScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear search"
+                                    contentDescription = stringResource(R.string.common_clear_search)
                                 )
                             }
                         }
@@ -217,7 +219,7 @@ fun NoteListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddNoteClick) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add note")
+                Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.notes_add))
             }
         }
     ) { padding ->
@@ -233,7 +235,7 @@ fun NoteListScreen(
 
                 is NotesUiState.Error -> {
                     Text(
-                        text = uiState.message,
+                        text = stringResource(uiState.messageRes),
                         modifier = Modifier.align(Alignment.Center),
                         color = MaterialTheme.colorScheme.error
                     )
@@ -267,7 +269,7 @@ fun NoteListScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "No notes found",
+                                        text = stringResource(R.string.notes_empty),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }

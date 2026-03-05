@@ -12,6 +12,7 @@ import com.ar.data.note.mapper.toRemoteDto
 import com.ar.data.note.remote.NoteRemoteDataSource
 import com.ar.data.sync.SyncState
 import com.ar.domain.auth.repository.AuthRepository
+import com.ar.domain.error.NoteError
 import com.ar.domain.note.model.Note
 import com.ar.domain.note.repository.NoteRepository
 import kotlinx.coroutines.channels.awaitClose
@@ -91,7 +92,7 @@ class NoteRepositoryImpl @Inject constructor(
         getNotesLocalByCategory(categoryId)
             .map<List<Note>, Result<List<Note>>> { Result.Success(it) }
             .onStart { emit(Result.Loading) }
-            .catch { e -> emit(Result.Error("Failed to load notes locally", e)) }
+            .catch { e -> emit(Result.Error(error = NoteError.LoadNotesLocalFailed, throwable = e)) }
             .flowOn(dispatchers.io)
 
     private fun getNotesByCategoryFresh(
@@ -99,7 +100,10 @@ class NoteRepositoryImpl @Inject constructor(
         saveToLocal: Boolean
     ): Flow<Result<List<Note>>> = flow {
         val uid = signedInUserIdOrNull()
-            ?: throw IllegalStateException("Sign-in required for remote fetch")
+        if (uid == null) {
+            emit(Result.Error(error = NoteError.SignInRequiredForRemoteFetch))
+            return@flow
+        }
 
         emitAll(
             getNotesRemoteByCategory(uid, categoryId)
@@ -110,7 +114,7 @@ class NoteRepositoryImpl @Inject constructor(
                 .onStart { emit(Result.Loading) }
         )
     }.catch { e ->
-        emit(Result.Error("Failed to load notes from remote", e))
+    emit(Result.Error(error = NoteError.LoadNotesRemoteFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
     private fun getNotesByCategoryFallback(
@@ -137,7 +141,7 @@ class NoteRepositoryImpl @Inject constructor(
             }
         }
     }.catch { e ->
-        emit(Result.Error("Failed to load notes (remote + local fallback)", e))
+        emit(Result.Error(error = NoteError.LoadNotesFallbackFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
     private fun getNotesByCategorySynced(categoryId: String): Flow<Result<List<Note>>> = flow {
@@ -151,7 +155,7 @@ class NoteRepositoryImpl @Inject constructor(
             }
 
         if (!networkMonitor.isOnlineNow()) {
-            emit(Result.Error("No internet connection"))
+            emit(Result.Error(error = NoteError.NoInternetConnection))
             return@flow
         }
 
@@ -160,7 +164,7 @@ class NoteRepositoryImpl @Inject constructor(
 
         emit(Result.Success(domainNotes))
     }.catch { e ->
-        emit(Result.Error("Failed to sync notes", e))
+        emit(Result.Error(error = NoteError.SyncNotesFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
     override fun getNoteById(id: String): Flow<Result<Note>> = channelFlow {
@@ -170,7 +174,7 @@ class NoteRepositoryImpl @Inject constructor(
         val localJob = launch(dispatchers.io) {
             local.observeNoteById(id).collect { entity ->
                 if (entity == null) {
-                    send(Result.Error("Note not found"))
+                    send(Result.Error(error = NoteError.NoteNotFound))
                 } else {
                     send(Result.Success(entity.toDomain()))
                 }
@@ -253,12 +257,15 @@ class NoteRepositoryImpl @Inject constructor(
         getNotesLocal()
             .map<List<Note>, Result<List<Note>>> { notes -> Result.Success(notes) }
             .onStart { emit(Result.Loading) }
-            .catch { e -> emit(Result.Error("Failed to load notes locally", e)) }
+            .catch { e -> emit(Result.Error(error = NoteError.LoadNotesLocalFailed, throwable = e)) }
             .flowOn(dispatchers.io)
 
     private fun getNotesFresh(saveToLocal: Boolean): Flow<Result<List<Note>>> = flow {
         val uid = signedInUserIdOrNull()
-            ?: throw IllegalStateException("Sign-in required for remote fetch")
+        if (uid == null) {
+            emit(Result.Error(error = NoteError.SignInRequiredForRemoteFetch))
+            return@flow
+        }
 
         emitAll(
             getNotesRemote(uid)
@@ -269,7 +276,7 @@ class NoteRepositoryImpl @Inject constructor(
                 .onStart { emit(Result.Loading) }
         )
     }.catch { e ->
-        emit(Result.Error("Failed to load notes from remote", e))
+        emit(Result.Error(error = NoteError.LoadNotesRemoteFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
     private fun getNotesFallback(saveToLocal: Boolean): Flow<Result<List<Note>>> = channelFlow {
@@ -293,7 +300,7 @@ class NoteRepositoryImpl @Inject constructor(
             }
         }
     }.catch { e ->
-        emit(Result.Error("Failed to load notes (remote + local fallback)", e))
+        emit(Result.Error(error = NoteError.LoadNotesFallbackFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
     override suspend fun createNote(note: Note): Result<Note> {
@@ -322,12 +329,12 @@ class NoteRepositoryImpl @Inject constructor(
 
             Result.Success(toSave)
         } catch (e: Exception) {
-            Result.Error("Failed to save note locally", e)
+            Result.Error(error = NoteError.SaveNoteLocalFailed, throwable = e)
         }
     }
 
     override suspend fun updateNote(note: Note): Result<Note> {
-        if (note.id.isBlank()) return Result.Error("Note id cannot be empty")
+        if (note.id.isBlank()) return Result.Error(error = NoteError.EmptyNoteId)
 
         return try {
             // Local: optimistic update (PENDING)
@@ -352,7 +359,7 @@ class NoteRepositoryImpl @Inject constructor(
 
             Result.Success(note)
         } catch (e: Exception) {
-            Result.Error("Failed to update note", e)
+            Result.Error(error = NoteError.DeleteNoteFailed, throwable = e)
         }
     }
 
@@ -383,7 +390,7 @@ class NoteRepositoryImpl @Inject constructor(
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error("Failed to delete note", e)
+            Result.Error(error = NoteError.DeleteNoteFailed, throwable = e)
         }
     }
 
@@ -398,7 +405,7 @@ class NoteRepositoryImpl @Inject constructor(
             }
 
         if (!networkMonitor.isOnlineNow()) {
-            emit(Result.Error("No internet connection"))
+            emit(Result.Error(error = NoteError.NoInternetConnection))
             return@flow
         }
 
@@ -407,7 +414,7 @@ class NoteRepositoryImpl @Inject constructor(
 
         emit(Result.Success(domainNotes))
     }.catch { e ->
-        emit(Result.Error("Failed to sync notes", e))
+        emit(Result.Error(error = NoteError.SyncNotesFailed, throwable = e))
     }.flowOn(dispatchers.io)
 
 
@@ -426,7 +433,7 @@ class NoteRepositoryImpl @Inject constructor(
 
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error("Failed to refresh notes", e)
+            Result.Error(error = NoteError.RefreshNotesFailed, throwable = e)
         }
     }
 

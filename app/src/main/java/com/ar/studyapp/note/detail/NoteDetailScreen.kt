@@ -121,12 +121,9 @@ fun NoteDetailScreen(
                     }
                 },
                 actions = {
-                    val canSave =
-                        uiState is NoteDetailUiState.Success && uiState.isDirty && !uiState.isSaving
-
                     IconButton(
                         onClick = onSaveClick,
-                        enabled = canSave
+                        enabled = (uiState as? NoteDetailUiState.Success)?.canSave == true
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,

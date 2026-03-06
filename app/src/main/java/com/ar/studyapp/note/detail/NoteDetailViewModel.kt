@@ -47,13 +47,6 @@ class NoteDetailViewModel @Inject constructor(
 
     private var currentKey: String? = null
 
-    /**
-     * Initializes the screen based on navigation args.
-     *
-     * Best practice:
-     * - "Create" is explicit via mode flag (no sentinel ids).
-     * - "Edit" waits for the SSOT (NoteListViewModel.notes) and gets injected via onNoteUpdated(note).
-     */
     fun start(mode: String?, noteId: String?) {
         val normalizedMode = mode ?: NoteDestinations.MODE_EDIT
         val normalizedId = noteId?.trim()
@@ -65,24 +58,16 @@ class NoteDetailViewModel @Inject constructor(
         if (normalizedMode == NoteDestinations.MODE_CREATE) {
             startNewDraft()
         } else {
-            // Edit mode -> we wait for SSOT injection via onNoteUpdated
             setLoading()
         }
     }
 
-    /**
-     * Puts the UI into loading state while waiting SSOT (list stream).
-     * We avoid overriding user edits if the user is already editing (dirty=true).
-     */
     fun setLoading() {
         val current = _uiState.value
         if (current is NoteDetailUiState.Success && current.isDirty) return
         _uiState.value = NoteDetailUiState.Loading
     }
 
-    /**
-     * Shows a "not found" state if the note cannot be resolved from the SSOT.
-     */
     fun showNotFound(noteId: String) {
         val current = _uiState.value
         if (current is NoteDetailUiState.Success && current.isDirty) return
@@ -92,14 +77,6 @@ class NoteDetailViewModel @Inject constructor(
         )
     }
 
-    /**
-     * SSOT injection point.
-     * Route calls this when the note appears in NoteListViewModel.notes.
-     *
-     * Rule:
-     * - If user is editing (dirty), do NOT overwrite drafts.
-     * - Otherwise, sync drafts with the latest note.
-     */
     fun onNoteUpdated(note: Note) {
         val current = _uiState.value
 
@@ -109,28 +86,23 @@ class NoteDetailViewModel @Inject constructor(
                 isNew = false,
                 titleDraft = note.title,
                 contentDraft = note.content,
-                selectedCategoryId = note.categoryId,
-                isDirty = false,
-                canSave = false
-            )
+                selectedCategoryId = note.categoryId
+            ).withDerivedState()
             return
         }
 
         if (current.isDirty) {
-            // Keep drafts, only refresh backing note reference.
-            _uiState.value = current.copy(note = note, saveErrorRes = null)
+            _uiState.value = current.copy(note = note, saveErrorRes = null).withDerivedState()
             return
         }
 
-        // Not dirty -> keep UI fully in sync with SSOT.
         _uiState.value = current.copy(
             note = note,
             titleDraft = note.title,
             contentDraft = note.content,
             selectedCategoryId = note.categoryId,
-            saveErrorRes = null,
-            canSave = false
-        )
+            saveErrorRes = null
+        ).withDerivedState()
     }
 
     private fun startNewDraft() {
@@ -148,93 +120,37 @@ class NoteDetailViewModel @Inject constructor(
             isNew = true,
             titleDraft = "",
             contentDraft = "",
-            selectedCategoryId = null,
-            isDirty = false,
-            canSave = false
-        )
+            selectedCategoryId = null
+        ).withDerivedState()
     }
 
     fun onEvent(event: NoteDetailEvent) {
-        val current = _uiState.value as? NoteDetailUiState.Success ?: return
         when (event) {
-            is NoteDetailEvent.TitleChanged -> onTitleChanged(current, event.value)
-            is NoteDetailEvent.ContentChanged -> onContentChanged(current, event.value)
-            is NoteDetailEvent.CategoryChanged -> onCategoryChanged(current, event.categoryId)
+            is NoteDetailEvent.TitleChanged -> updateForm { copy(titleDraft = event.value) }
+            is NoteDetailEvent.ContentChanged -> updateForm { copy(contentDraft = event.value) }
+            is NoteDetailEvent.CategoryChanged -> updateForm { copy(selectedCategoryId = event.categoryId) }
         }
     }
 
-    private fun onTitleChanged(current: NoteDetailUiState.Success, newTitle: String) {
-        val dirty = isDirty(
-            note = current.note,
-            isNew = current.isNew,
-            titleDraft = newTitle,
-            contentDraft = current.contentDraft,
-            selectedCategoryId = current.selectedCategoryId
-        )
-        _uiState.value = current.copy(
-            titleDraft = newTitle,
-            isDirty = dirty,
-            canSave = canSave(
-                isNew = current.isNew,
-                isDirty = dirty,
-                isSaving = current.isSaving,
-                titleDraft = newTitle,
-                contentDraft = current.contentDraft
-            ),
-            saveErrorRes = null
-        )
-    }
-
-    private fun onContentChanged(current: NoteDetailUiState.Success, newContent: String) {
-        val dirty = isDirty(
-            note = current.note,
-            isNew = current.isNew,
-            titleDraft = current.titleDraft,
-            contentDraft = newContent,
-            selectedCategoryId = current.selectedCategoryId
-        )
-        _uiState.value = current.copy(
-            contentDraft = newContent,
-            isDirty = dirty,
-            canSave = canSave(
-                isNew = current.isNew,
-                isDirty = dirty,
-                isSaving = current.isSaving,
-                titleDraft = current.titleDraft,
-                contentDraft = newContent
-            ),
-            saveErrorRes = null
-        )
-    }
-
-    private fun onCategoryChanged(current: NoteDetailUiState.Success, categoryId: String?) {
-        val dirty = isDirty(
-            note = current.note,
-            isNew = current.isNew,
-            titleDraft = current.titleDraft,
-            contentDraft = current.contentDraft,
-            selectedCategoryId = categoryId
-        )
-        _uiState.value = current.copy(
-            selectedCategoryId = categoryId,
-            isDirty = dirty,
-            canSave = canSave(
-                isNew = current.isNew,
-                isDirty = dirty,
-                isSaving = current.isSaving,
-                titleDraft = current.titleDraft,
-                contentDraft = current.contentDraft
-            ),
-            saveErrorRes = null
-        )
+    private fun updateForm(
+        transform: NoteDetailUiState.Success.() -> NoteDetailUiState.Success
+    ) {
+        val current = _uiState.value as? NoteDetailUiState.Success ?: return
+        _uiState.value = current
+            .transform()
+            .copy(saveErrorRes = null)
+            .withDerivedState()
     }
 
     fun save(onCreated: (String) -> Unit) {
         val current = _uiState.value as? NoteDetailUiState.Success ?: return
-        if (!current.canSave || current.isSaving) return
+        if (!current.canSave) return
 
         viewModelScope.launch {
-            _uiState.value = current.copy(isSaving = true, saveErrorRes = null)
+            _uiState.value = current.copy(
+                isSaving = true,
+                saveErrorRes = null
+            ).withDerivedState()
 
             val now = Instant.now()
 
@@ -268,12 +184,9 @@ class NoteDetailViewModel @Inject constructor(
                         contentDraft = saved.content,
                         selectedCategoryId = saved.categoryId,
                         isSaving = false,
-                        isDirty = false,
-                        canSave = false,
                         saveErrorRes = null
-                    )
+                    ).withDerivedState()
 
-                    // Notify caller to switch route into edit mode with real id.
                     if (current.isNew) onCreated(saved.id)
                 }
 
@@ -281,15 +194,8 @@ class NoteDetailViewModel @Inject constructor(
                     _uiState.value = current.copy(
                         isSaving = false,
                         saveErrorRes = result.error.toMessageResOrNull()
-                            ?: R.string.note_error_save_failed_fallback,
-                        canSave = canSave(
-                            isNew = current.isNew,
-                            isDirty = current.isDirty,
-                            isSaving = false,
-                            titleDraft = current.titleDraft,
-                            contentDraft = current.contentDraft
-                        )
-                    )
+                            ?: R.string.note_error_save_failed_fallback
+                    ).withDerivedState()
                 }
 
                 is Result.Loading -> Unit
@@ -297,37 +203,24 @@ class NoteDetailViewModel @Inject constructor(
         }
     }
 
-    private fun isDirty(
-        note: Note,
-        isNew: Boolean,
-        titleDraft: String,
-        contentDraft: String,
-        selectedCategoryId: String?
-    ): Boolean {
-        return if (isNew) {
+    private fun NoteDetailUiState.Success.withDerivedState(): NoteDetailUiState.Success {
+        val dirty = if (isNew) {
             titleDraft.isNotBlank() || contentDraft.isNotBlank() || selectedCategoryId != null
         } else {
             titleDraft != note.title ||
                     contentDraft != note.content ||
                     selectedCategoryId != note.categoryId
         }
-    }
 
-    private fun canSave(
-        isNew: Boolean,
-        isDirty: Boolean,
-        isSaving: Boolean,
-        titleDraft: String,
-        contentDraft: String
-    ): Boolean {
-        if (isSaving) return false
-        if (!isDirty) return false
+        val hasMeaningfulInput = titleDraft.isNotBlank() || contentDraft.isNotBlank()
 
-        // For new note creation, require both fields.
-        return if (isNew) {
-            titleDraft.isNotBlank() && contentDraft.isNotBlank()
-        } else {
-            true
-        }
+        val saveEnabled = !isSaving &&
+                dirty &&
+                hasMeaningfulInput
+
+        return copy(
+            isDirty = dirty,
+            canSave = saveEnabled
+        )
     }
 }
